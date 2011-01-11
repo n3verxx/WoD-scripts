@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name           My Menu
 // @namespace      Never
-// @description    Injects custom main menu entry
+// @description    Script allows to alter main menu by injecting customizable entries
 // @include        http*://*.world-of-dungeons.net*
 // ==/UserScript==
 
@@ -123,7 +123,7 @@ var MY_MENU_LAYOUT = {
 
 function $(selector, parentNode) {
     var context = parentNode || document;
-    if (!selector || typeof selector !== "string" || !(context.nodeType === 9 || context.nodeType === 1)) return null;
+    if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
     var selectors = selector.split(' '),
         result = [context];
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
@@ -147,14 +147,14 @@ function $(selector, parentNode) {
                 };
                 break;
         }
-        if (new_result.length == 0) return null;
+        if (new_result.length === 0) return null;
         result = new_result;
     }
     for (var i = 0, cnt = result.length; i < cnt; i++) {
         if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject;
     };
     if (result.length > 1) return result;
-    return result.length == 1 && result[0] !== context ? result[0] : null;
+    return result.length === 1 && result[0] !== context ? result[0] : null;
 }
 
 var attr = function(name, value, remove) {
@@ -207,20 +207,19 @@ var add = function(value) {
 }
 
 if (Element.prototype) {
-    Element.prototype.attr = attr;
-    Element.prototype.css = css;
-    Element.prototype.cssClass = cssClass;
-    Element.prototype.add = add;
+    if (!Element.prototype.attr) Element.prototype.attr = attr;
+    if (!Element.prototype.css)  Element.prototype.css = css;
+    if (!Element.prototype.cssClass) Element.prototype.cssClass = cssClass;
+    if (!Element.prototype.add) Element.prototype.add = add;
 }
 else {
     var elements = ['Body', 'Anchor', 'Div', 'Image', 'Span'];
     for (var i = 0, cnt = elements.length; i < cnt; i++) {
-        var name = 'HTML' + elements[i] + 'Element'
-            proto = unsafeWindow[name].prototype;
-        proto.attr = attr;
-        proto.css = css;
-        proto.cssClass = cssClass;
-        proto.add = add;
+        var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
+        if (!proto.attr) proto.attr = attr;
+        if (!proto.css) proto.css = css;
+        if (!proto.cssClass) proto.cssClass = cssClass;
+        if (!proto.add) proto.add = add;
     };
 }
 
@@ -228,39 +227,36 @@ var verticalMenu = $('.menu-vertical .menu-0-body');
 
 if (verticalMenu) {
 
-   var body_onload = $('body').attr('onload'),
-       skin = body_onload.match(/skin[0-9-]+/i),
-       sid = body_onload.match(/JsSession\(.+,\s([0-9]+),/)[1],
-       base_url = document.location.href.match(/https?:\/\/[a-z]+\.world-of-dungeons\.net/);
-       font_render_url = 'http://fonts.neise-games.de/java_font_renderer/render?skin=' + skin,
-       my_menu = add('div').attr({'class': 'menu-1', id: 'menu_my_menu'}),
-       caption = my_menu.add('a').attr({'class': 'menu-1-caption', 'onclick': "return menuOnClick(this,'','','');"});
+    var skin = $('body').attr('onload').match(/skin[0-9-]+/i),
+        font_render_url = 'http://fonts.neise-games.de/java_font_renderer/render?skin=' + skin,
+        my_menu = add('div').attr({'class': 'menu-1', id: 'menu_my_menu'}),
+        caption = my_menu.add('a').attr({'class': 'menu-1-caption alink selected', 'onclick': "return menuOnClick(this,'','','');"}),
+        supports_img = skin && skin != 'skin-1';
 
-   if (skin) {
-       caption.add('img').attr({'class': 'font_menu-1', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1&text=' + MY_MENU_NAME});
-       caption.add('img').attr({'class': 'font_menu-1-hovered', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-hovered&text=' + MY_MENU_NAME});
-       caption.add('img').attr({'class': 'font_menu-1-selected', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-selected&text=' + MY_MENU_NAME});
-   }
+    if (supports_img) {
+        caption.add('img').attr({'class': 'font_menu-1', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1&text=' + MY_MENU_NAME});
+        caption.add('img').attr({'class': 'font_menu-1-hovered', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-hovered&text=' + MY_MENU_NAME});
+        caption.add('img').attr({'class': 'font_menu-1-selected', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-selected&text=' + MY_MENU_NAME});
+    }
+    else {
+        caption.innerText = MY_MENU_NAME;
+    }
 
    caption.add('span').attr('class', 'menu-1-arrow open');
 
    var menu_body = my_menu.add('div').attr({'class': 'menu-1-body', 'style' : 'display: block'}).add('div').attr('class', 'menu-2'),
        menu1 = $('.menu-1', verticalMenu),
        links = $('.menu-2 a', verticalMenu),
-       menu_items = {};
+       menu_items = {},
+       open_links = {};
 
-    var open_links = {};
-
-    for (var i = 0, cnt = menu1.length; i < cnt; i++) {
-        var open_menu = menu1[i];
-        if (open_menu.cssClass('open')) {
+   for (var i = 0, cnt = menu1.length; i < cnt; i++) {
+       var open_menu = menu1[i];
+       if (open_menu.cssClass('open')) {
            var tmp = $('a', open_menu);
            for (var j = 0, c2 = tmp.length; j < c2; j++) {
-               var link = tmp[j],
-                   name = link.attr('onclick').match(/'([a-z_ ]+)',''\);$/i);
-               if (name) {
-                   open_links[name[1]] = open_menu;
-               }
+               var name = tmp[j].attr('onclick').match(/'([a-z_ ]+)',''\);$/i);
+               if (name) open_links[name[1]] = open_menu;
            }
        }
    }
@@ -268,49 +264,48 @@ if (verticalMenu) {
    // var keys = '';
 
    for (var i = 0, cnt = links.length; i < cnt; i++) {
-        var link = links[i],
-            name = link.attr('onclick').match(/'([a-z_ ]+)',''\);$/i);
-        if (name) {
-            menu_items[name[1]] = link.cloneNode(true);
-            // keys += "'" + name[1] + "' : '" + link.innerText.replace(/^\s+|\s+$/g,"") + "',\n";
-        }
+       var link = links[i],
+           name = link.attr('onclick').match(/'([a-z_ ]+)',''\);$/i);
+       if (name) {
+           menu_items[name[1]] = link.cloneNode(true);
+           // keys += "'" + name[1] + "' : '" + link.innerText.replace(/^\s+|\s+$/g,"") + "',\n";
+       }
    }
 
    for(var key in MY_MENU_LAYOUT) {
-        var link = menu_items[key],
-            submenu = false;
-        if (!link) link = add('a').attr({'href':'#', 'class': 'menu-2-caption'});
-        link.attr('onclick', null, true);
-        var menu_item = MY_MENU_LAYOUT[key];
-        if (typeof menu_item === 'string') {
-            link.innerHTML = menu_item;
-            var open_menu = open_links[key];
-            if (open_menu) {
-                var arrow = $('.menu-1-arrow', open_menu.cssClass('open', false));
-                if (arrow) arrow.cssClass('open', false).cssClass('closed', true);
-            }
-        }
-        else {
-            link.innerText = menu_item[0];
-            var submenu_items = menu_item[1];
-            submenu = add('div').attr({'class': 'menu-2-body', 'style': 'padding-top: 0px'});
-            for (var subkey in submenu_items)
-            {
-                var sublink = menu_items[subkey];
-                if (sublink) {
-                    sublink.attr('onclick', null, true);
-                    submenu.add('div').attr('class', 'menu-3').add(sublink).cssClass('menu-2-caption', false).cssClass('menu-3-caption', true).innerHTML = submenu_items[subkey];
-                    var open_menu = open_links[subkey];
-                    if (open_menu) {
-                        var arrow = $('.menu-1-arrow', open_menu.cssClass('open', false));
-                        if (arrow) arrow.cssClass('open', false).cssClass('closed', true);
-                    }
-                }
-            };
-        }
-        var new_menu = menu_body.add('div').attr('class', 'menu-2 open');
-        new_menu.add(link);
-        if (submenu) new_menu.add(submenu);
+       var link = menu_items[key],
+           submenu = false;
+       if (!link) link = add('a').attr({'href':'#', 'class': 'menu-2-caption'});
+       link.attr('onclick', null, true);
+       var menu_item = MY_MENU_LAYOUT[key];
+       if (typeof menu_item === 'string') {
+           link.innerHTML = menu_item;
+           var open_menu = open_links[key];
+           if (open_menu) {
+               var arrow = $('.menu-1-arrow', open_menu.cssClass('open', false));
+               if (arrow) arrow.cssClass('open', false).cssClass('closed', true);
+           }
+       }
+       else {
+           link.innerText = menu_item[0];
+           var submenu_items = menu_item[1];
+           submenu = add('div').attr({'class': 'menu-2-body', 'style': 'padding-top: 0px'});
+           for (var subkey in submenu_items) {
+               var sublink = menu_items[subkey];
+               if (sublink) {
+                   sublink.attr('onclick', null, true);
+                   submenu.add('div').attr('class', 'menu-3').add(sublink).cssClass('menu-2-caption', false).cssClass('menu-3-caption', true).innerHTML = submenu_items[subkey];
+                   var open_menu = open_links[subkey];
+                   if (open_menu) {
+                       var arrow = $('.menu-1-arrow', open_menu.cssClass('open', false));
+                       if (arrow) arrow.cssClass('open', false).cssClass('closed', true);
+                   }
+               }
+           };
+       }
+       var new_menu = menu_body.add('div').attr('class', 'menu-2 open');
+       new_menu.add(link);
+       if (submenu) new_menu.add(submenu);
    }
 
    verticalMenu.insertBefore(add('div').attr('class', 'menu-between'), verticalMenu.firstChild);
