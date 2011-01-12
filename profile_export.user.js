@@ -2,7 +2,7 @@
 // @name           Profile Export
 // @namespace      Never
 // @description    Script allows to export hero profile to BBCode
-// @include        http*://*.world-of-dungeons.net/wod/spiel/hero/attributes.php*
+// @include        http*://*.world-of-dungeons.net/wod/spiel/hero/*.php*
 // ==/UserScript==
 //
 
@@ -95,6 +95,17 @@ var add = function(value) {
     return newElem;
 }
 
+var get = function(url, callback) {
+    var request = new XMLHttpRequest();
+    request.onreadystatechange = function() {
+        if (request.readyState === 4 && request.status === 200 && typeof callback === 'function') {
+            callback(request.responseText);
+        }
+    };
+    request.open('GET', url, true);
+    request.send(null);
+}
+
 if (Element.prototype) {
     if (!Element.prototype.attr) Element.prototype.attr = attr;
     if (!Element.prototype.css)  Element.prototype.css = css;
@@ -122,6 +133,10 @@ String.prototype.parseEffectiveValue = function(defaultValue) {
     return val[3] ? [Number(val[1]), Number(val[3])] : [Number(val[1]), Number(def)];
 }
 
+String.prototype.appendLine = function(line) {
+    return this + line + '\n';
+}
+
 // --- Classes ---
 
 function HeroAttribute(name) {
@@ -131,10 +146,10 @@ function HeroAttribute(name) {
 }
 
 HeroAttribute.prototype.toString = function() {
-    return this.name + ' ' + this.value + '[' + this.effective_value + ']';
+    return this.name + ' ' + this.value + (this.effective_value != 0 ? '[' + this.effective_value + ']' : '') + ' ' + HeroAttribute.getCost(this.value);
 }
 
-HeroAttribute.prototype.getCost = function() {
+HeroAttribute.getCost = function(value) {
     var attrCosts = {
         '1': 0, '2': 100, '3': 500, '4': 1300, '5': 2800, '6': 5100, '7': 8500, '8': 13200,
         '9': 19400, '10': 27400, '11': 37400, '12': 49700, '13': 64500, '14': 82100, 
@@ -142,7 +157,7 @@ HeroAttribute.prototype.getCost = function() {
         '21': 306800, '22': 356800, '23': 412200, '24': 473300,'25': 540400,'26': 613800, 
         '27': 693800, '28': 780800, '29': 875000,'30': 976800
     };
-    return attrCosts[this.baseValue];
+    return attrCosts[value];
 }
 
 function Hero() {
@@ -155,8 +170,9 @@ function Hero() {
     this.initiative = '';
     this.reset_points = '';
     this.fame = 0;
-    this.gender = 'male';
+    this.gender = 'M';
     this.title = '';
+    this.skills = [];
     this.attributes = {
         'st' : new HeroAttribute('Strength'),
         'co' : new HeroAttribute('Constitution'),
@@ -185,16 +201,15 @@ Hero.prototype.dumpInfo = function() {
     tt += 'Gender:' + this.gender + '\n';
 
     for(name in this.attributes) {
-        var at = this.attributes[name];
-        tt += at.name + ' ' + at.value + (at.effective_value != 0 ? '[' + at.effective_value + ']' : '') + '\n';
+        tt += this.attributes[name].toString() + '\n';
     }
 
     alert(tt);
 }
 
 Hero.prototype.parse = function(html) {
-    var title = $('h1', form_attr),
-        content_rows = $('.content_table_row_0', form_attr).concat($('.content_table_row_1', form_attr));
+    var title = $('h1', html),
+        content_rows = $('.content_table_row_0', html).concat($('.content_table_row_1', html));
 
     this.name = title.innerText.replace('- Attributes and Characteristics', '').trim();
 
@@ -276,9 +291,55 @@ Hero.prototype.parse = function(html) {
     };
 }
 
+function HeroSkill(name) {
+    this.name = '';
+    this.type = '';
+    this.rank = 0;
+    this.in_round = true;
+    this.pre_round = false;
+    this.mp_base = 0;
+    this.skill_class = '';
+    this.initiative_attr = '';
+    this.attack_type = '';
+    this.attack_attr = '';
+    this.attack_dmg = '';
+    this.defense_attr = '';
+    this.target = '';
+    this.max_affected = '';
+}
+
+HeroSkill.prototype.toString = function() {
+     var txt = '';
+     txt.appendLine('Name: ' + this.name);
+     txt.appendLine('Type: ' + this.type);
+     txt.appendLine('Rank: ' + this.rank);
+     txt.appendLine('In-ronud: ' + this.in_round);
+     txt.appendLine('Pre-ronud: ' + this.in_round);
+     txt.appendLine('MP base: ' + this.in_round);
+     txt.appendLine('Skill Class: ' + this.in_round);
+     txt.appendLine('Initiative attr: ' + this.in_round);
+     txt.appendLine('Attack type: ' + this.in_round);
+     txt.appendLine('Attack attr: ' + this.in_round);
+     txt.appendLine('Attack dmg: ' + this.in_round);
+     txt.appendLine('Defense attr: ' + this.in_round);
+     txt.appendLine('Target: ' + this.in_round);
+     txt.appendLine('Max affected: ' + this.in_round);
+     return txt;
+}
+
+HeroSkill.factory = function(param) {
+    var skill = new HeroSkill();
+    for (var key in param) {
+        this[key] = param[key];
+    }
+    return 
+}
+
 // --- Main ---
 
-var form_attr = $('#main_content form');
+var exportSkills = function() {
+    get(location.href.replace('skills.php', 'attributes.php'), doExport);
+}
 
 var exportProfile = function() {
     var hero = new Hero();
@@ -287,10 +348,31 @@ var exportProfile = function() {
     return false;
 }
 
-if (form_attr && form_attr.action && form_attr.action.match(/hero\/attributes\.php/i)) {
-    var title = $('h1', form_attr);
-    if (title) {
-        title.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 10px'}).addEventListener('click', exportProfile, false);
+var doExport = function(attrHtml) {
+    var skill_rows = $('.content_table_row_0', form_attr).concat($('.content_table_row_1', form_attr)),
+        attr_html = add('div'),
+        hero = new Hero();
+
+    attr_html.innerHTML = attrHtml;
+    hero.parse($('form', attr_html)[1]);
+    hero.dumpInfo();
+    return false;
+}
+
+var form_attr = $('#main_content form');
+
+if (form_attr && form_attr.action) {
+
+    if (form_attr.action.match(/hero\/attributes\.php/i)) {
+        var title = $('h1', form_attr);
+        if (title) {
+            title.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 10px'}).addEventListener('click', exportProfile, false);
+        }
+    }
+    else if (form_attr.action.match(/hero\/skills\.php/i)) {
+        var button = $('tbody .button', form_attr);
+        button = button[button.length-1];
+        if (button.value === 'Show Details') button.parentNode.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export'}).addEventListener('click', exportSkills, false);
     }
 }
 
