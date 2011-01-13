@@ -66,13 +66,14 @@ var attr = function(name, value, remove) {
 
 var css = function(name, value) {
     var estyle = document.defaultView.getComputedStyle(this, null);
+    alert(value);
     if (typeof name === 'object') {
         for (var key in name) {
             estyle.setProperty(key, name[key]);
         };
     }
     else if (value) {
-        estyle.setProperty(name, value);
+        estyle.setProperty(name, value, '');
     }
     else {
         return estyle.getPropertyValue(name);
@@ -95,14 +96,28 @@ var add = function(value) {
     return newElem;
 }
 
-var get = function(url, callback) {
-    var request = new XMLHttpRequest();
+var get = function(url, callback, obj, async) {
+    var request = new XMLHttpRequest(),
+        sync = typeof async === 'undefined' ? true : async;
     request.onreadystatechange = function() {
-        if (request.readyState === 4 && request.status === 200 && typeof callback === 'function') {
-            callback(request.responseText);
+        if (request.readyState === 4) {
+
+            if (request.status !== 200) {
+                alert('Data fetch failed');
+                return false;
+            }
+
+            if (typeof callback === 'function') {
+                if (!obj) {
+                    callback(request.responseText);
+                }
+                else {
+                    callback.call(obj, request.responseText);
+                }
+            }
         }
     };
-    request.open('GET', url, true);
+    request.open('GET', url, sync);
     request.send(null);
 }
 
@@ -127,10 +142,19 @@ String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g, '');
 }
 
+String.prototype.format = function() {
+    var formatted = this;
+    for (var i = 0; i < arguments.length; i++) {
+        var regexp = new RegExp('\\{'+i+'\\}', 'gi');
+        formatted = formatted.replace(regexp, arguments[i]);
+    }
+    return formatted;
+}
+
 String.prototype.parseEffectiveValue = function(defaultValue) {
-    var val = this.replace(/[a-z:,\s\n]+/gi, '').match(/([0-9]+)(\[([0-9-]+)\])?/),
-        def = defaultValue || 0;
-    return val[3] ? [Number(val[1]), Number(val[3])] : [Number(val[1]), Number(def)];
+    var val = this.replace(/[a-z:,\s\n]+/gi, '').match(/([0-9]+)(\[([0-9-]+)\])?/);
+    if (val === null) return [0,0];
+    return  val[3] ? [Number(val[1]), Number(val[3])] : [Number(val[1]), Number(val[1])];
 }
 
 String.prototype.appendLine = function(line) {
@@ -151,11 +175,11 @@ HeroAttribute.prototype.toString = function() {
 
 HeroAttribute.getCost = function(value) {
     var attrCosts = {
-        '1': 0, '2': 100, '3': 500, '4': 1300, '5': 2800, '6': 5100, '7': 8500, '8': 13200,
-        '9': 19400, '10': 27400, '11': 37400, '12': 49700, '13': 64500, '14': 82100, 
-        '15': 102800, '16': 126800, '17': 154400, '18': 185900,'19': 221600,'20': 261800, 
-        '21': 306800, '22': 356800, '23': 412200, '24': 473300,'25': 540400,'26': 613800, 
-        '27': 693800, '28': 780800, '29': 875000,'30': 976800
+        '1': 0, '2': 100, '3': 500, '4': 1300, '5': 2800, '6': 5100, '7': 8500, '8': 13200, '9': 19400, 
+        '10': 27400,  '11': 37400,  '12': 49700,  '13': 64500,  '14': 82100, '15': 102800,
+        '16': 126800, '17': 154400, '18': 185900, '19': 221600, '20': 261800,'21': 306800,
+        '22': 356800, '23': 412200, '24': 473300, '25': 540400, '26': 613800,'27': 693800,
+        '28': 780800, '29': 875000, '30': 976800
     };
     return attrCosts[value];
 }
@@ -289,50 +313,124 @@ Hero.prototype.parse = function(html) {
             }
        }
     };
+    return this;
 }
 
 function HeroSkill(name) {
     this.name = '';
     this.type = '';
     this.rank = 0;
+    this.effective_rank = 0;
+    this.primary = false;
+    this.secondary = false;
+    this.exceptional = false;
     this.in_round = true;
     this.pre_round = false;
+    this.target = '';
+    this.max_affected = '';
     this.mp_base = 0;
+    this.item = '';
     this.skill_class = '';
     this.initiative_attr = '';
     this.attack_type = '';
     this.attack_attr = '';
-    this.attack_dmg = '';
+    this.damage_attr = '';
     this.defense_attr = '';
-    this.target = '';
-    this.max_affected = '';
+    this.healing_attr = '';
+}
+
+HeroSkill.prototype.parseInfo = function(data) {
+    var skill_info = add('div'),
+        tmp = '';
+
+    skill_info.innerHTML = data;
+    var table_rows = $('.content_table table tr', $('form h1', skill_info).nextSibling.nextSibling);
+
+    //ctual_cost = base_cost * (0.8 + 0.1 * skill_level)
+
+    for (var i = 0, cnt = table_rows.length; i < cnt; i++) {
+       var property = table_rows[i].cells[0].innerText.trim(),
+           value = table_rows[i].cells[1].innerText.replace(/(\s|&nbsp;)/g, ' ').trim(),
+           tmp = tmp.appendLine(property + ':' + value);
+        switch(property) {
+            case 'type'                     : this.type = value;  break;
+            case 'may be used'              : this.in_round = value.indexOf("in round") > -1;  this.pre_round = value.indexOf("in pre round") > -1;  break;
+            case 'target'                   : this.target = value; break;
+            case 'Max. characters affected' :
+            case 'Max. opponents affected'  : this.max_affected = value; break;
+            case 'Mana points cost'         : this.mp_base = value === '-' ? 0 : value.match(/[0-9]+ \(([0-9]+)\)/)[1]; break;
+            case 'item'                     : this.item = value; break;
+            case 'skill class'              : this.skill_class = value; break;
+            case 'attack type'              : this.attack_type = value; break;
+            case 'attack'                   : this.attack_attr = value; break;
+            case 'damage'                   : this.damage_attr = value; break;
+            case 'initiative'               : this.initiative_attr = value; break;
+            case 'defense'                  : this.defense_attr = value; break;
+            case 'healing'                  : this.healing_attr = value; break;
+            default: break;
+        }
+    }
+
+    //alert(tmp);
+}
+
+HeroSkill.prototype.parse = function(row_html) {
+
+  try {
+    var link = $('a', row_html.cells[1]),
+        rank_row = $('tr', row_html.cells[2]),
+        rank = rank_row ? rank_row.cells[1].innerText.parseEffectiveValue() : [0,0],
+        title = link.href.match(/name=([a-z :\+]+)/i);
+
+    if (title != null && rank[0] !== 0)
+    {
+        this.name = title[1].replace(/\+/g, ' ');
+        this.rank = rank[0];
+        this.effective_rank = rank[1];
+
+        switch(link.attr('class')) {
+            case 'skill_primary'  : this.primary     = true; break;
+            case 'skill_secondary': this.secondary   = true; break;
+            case 'skill_foreign'  : this.exceptional = true; break;
+            default: break;
+        }
+
+        //get(link.href, this.parseInfo, this, false);
+    }
+    else {
+        //GM_log();
+    }
+    }
+    catch (error) {
+        GM_log(error);
+        alert(row_html.innerHTML);
+    }
+
+    return this;
 }
 
 HeroSkill.prototype.toString = function() {
      var txt = '';
-     txt.appendLine('Name: ' + this.name);
-     txt.appendLine('Type: ' + this.type);
-     txt.appendLine('Rank: ' + this.rank);
-     txt.appendLine('In-ronud: ' + this.in_round);
-     txt.appendLine('Pre-ronud: ' + this.in_round);
-     txt.appendLine('MP base: ' + this.in_round);
-     txt.appendLine('Skill Class: ' + this.in_round);
-     txt.appendLine('Initiative attr: ' + this.in_round);
-     txt.appendLine('Attack type: ' + this.in_round);
-     txt.appendLine('Attack attr: ' + this.in_round);
-     txt.appendLine('Attack dmg: ' + this.in_round);
-     txt.appendLine('Defense attr: ' + this.in_round);
-     txt.appendLine('Target: ' + this.in_round);
-     txt.appendLine('Max affected: ' + this.in_round);
+     txt = txt.appendLine('Name: ' + this.name);
+     txt = txt.appendLine('Rank: ' + this.rank);
+     txt = txt.appendLine('Effectice Rank: ' + this.effective_rank);
+     txt = txt.appendLine('Type: ' + this.type);
+     txt = txt.appendLine('Target: ' + this.target);
+     txt = txt.appendLine('Max affected: ' + this.max_affected);
+     txt = txt.appendLine('Primary: ' + this.primary);
+     txt = txt.appendLine('Secondary: ' + this.secondary);
+     txt = txt.appendLine('Exceptional: ' + this.exceptional);
+     txt = txt.appendLine('In-round: ' + this.in_round);
+     txt = txt.appendLine('Pre-round: ' + this.pre_round);
+     txt = txt.appendLine('MP base: ' + this.mp_base);
+     txt = txt.appendLine('Skill Class: ' + this.skill_class);
+     txt = txt.appendLine('Initiative attr: ' + this.initiative_attr);
+     txt = txt.appendLine('Attack type: ' + this.attack_type);
+     txt = txt.appendLine('Attack attr: ' + this.attack_attr);
+     txt = txt.appendLine('Attack dmg: ' + this.damage_attr);
+     txt = txt.appendLine('Defense attr: ' + this.defense_attr);
+     txt = txt.appendLine('Healing attr: ' + this.healing_attr);
      return txt;
-}
-
-HeroSkill.factory = function(param) {
-    var skill = new HeroSkill();
-    for (var key in param) {
-        this[key] = param[key];
-    }
-    return 
 }
 
 // --- Main ---
@@ -353,9 +451,34 @@ var doExport = function(attrHtml) {
         attr_html = add('div'),
         hero = new Hero();
 
-    attr_html.innerHTML = attrHtml;
-    hero.parse($('form', attr_html)[1]);
-    hero.dumpInfo();
+    //attr_html.innerHTML = attrHtml;
+    //hero.parse($('form', attr_html)[1]);
+    //hero.dumpInfo();
+
+    var skills = [];
+
+    for (var i = 0, cnt = skill_rows.length; i < cnt; i++) {
+        var skill = new HeroSkill().parse(skill_rows[i]);
+
+        if (skill.rank > 0) {
+            skills.push(skill);
+            //alert(skill);
+        }
+
+        //if (i == 2) break;
+    }
+
+    skills.sort(function(x,y) { return y.effective_rank - x.effective_rank; });
+
+    var t = '' + skills.length + '\n';
+
+    for (var i = 0, cnt = skills.length; i < cnt; i++) {
+        var skill = skills[i];
+        t = t.appendLine(skill.name + ' ' + (skill.rank === skill.effective_rank ? skill.rank : skill.rank + '[' + skill.effective_rank + ']'));
+    }
+
+    alert(t);
+
     return false;
 }
 
@@ -363,17 +486,26 @@ var form_attr = $('#main_content form');
 
 if (form_attr && form_attr.action) {
 
-    if (form_attr.action.match(/hero\/attributes\.php/i)) {
-        var title = $('h1', form_attr);
-        if (title) {
-            title.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 10px'}).addEventListener('click', exportProfile, false);
-        }
-    }
-    else if (form_attr.action.match(/hero\/skills\.php/i)) {
+    if (form_attr.action.match(/hero\/skills\.php/i)) {
         var button = $('tbody .button', form_attr);
         button = button[button.length-1];
-        if (button.value === 'Show Details') button.parentNode.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export'}).addEventListener('click', exportSkills, false);
+        if (button.value === 'Show Details') {
+            var btn_export = add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 4px'});
+            btn_export.addEventListener('click', exportSkills, false);
+            button.parentNode.insertBefore(btn_export, button.nextSibling);
+            button.parentNode.insertBefore(add('br'), btn_export.nextSibling);
+
+            //TODO: parse subclass
+            //var subclass = button.parentNode.innerText.trim().match(/[is]/);
+
+        }
     }
+//    else  if (form_attr.action.match(/hero\/attributes\.php/i)) {
+//        var title = $('h1', form_attr);
+//        if (title) {
+//            title.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 10px'}).addEventListener('click', exportProfile, false);
+//        }
+//    }
 }
 
 })();
