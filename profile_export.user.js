@@ -232,9 +232,11 @@ function Hero() {
 }
 
 Hero.prototype.dumpInfo = function() {
-    var tt = parseTemplate(Hero.getProfileTemplate(), {"hero": this});
-    var txt_export = $('h1', form_attr).parentNode.add('textarea').attr({'rows': '4', 'cols': '50'});
-    txt_export.innerHTML = tt.trim();
+    var bbcode = parseTemplate(Hero.getProfileTemplate(), {"hero": this}),
+        h1 = $('h1', form_attr),
+        txt_export = $('#profile-export-result', h1);
+    if (!txt_export) txt_export = h1.parentNode.add('textarea').attr({'rows': '4', 'cols': '50', 'id': 'profile-export-result'});
+    txt_export.innerHTML = bbcode.trim();
 }
 
 Hero.getProfileTemplate = function() {
@@ -246,7 +248,7 @@ Hero.getProfileTemplate = function() {
 [td]\
 [table border=1][tr][th]Attribute[/th][th]Value[/th][th]Spent :ep:[/th][/tr]\
 <# var c = 0, hattr = hero.attributes; for (var key in hattr) { var attr = hattr[key]; var efval = attr.effective_value !== attr.value ? ("[" + attr.effective_value + "]") : ""; c++; if (c > 8) break; #>\
-[tr][td][size=13]<#=attr.name#>[/size][/td][td][size=13]<#=attr.value#> [color=gold]<#=efval#>[/color][/size][/td][td align=right][size=13]<#=attr.training_cost#>[/size][/td][/tr]<# } #>\
+[tr][td][size=13]<#=attr.name#>[/size][/td][td align=center][size=13]<#=attr.value#> [color=gold]<#=efval#>[/color][/size][/td][td align=right][size=13]<#=attr.training_cost#>[/size][/td][/tr]<# } #>\
 [/table]\
 [/td]\
 [td][/td][td][/td][td][/td]\
@@ -266,8 +268,14 @@ Hero.getProfileTemplate = function() {
 [table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color;\
 var erank = skill.effective_rank !== skill.rank ? ("[" + skill.effective_rank + "]") : "";\
+var mp = skill.mp_cost != 0 ? skill.mp_cost : "";\
 if (skill.primary) color = "gold"; else if (skill.secondary) color = "lightgrey"; else color = "darkgrey";\#>\
-[tr][td][skill:"<#=skill.name#>" color=<#=color#> size=13][/td][td][size=13]<#=skill.rank#> [color=gold]<#=erank#>[/color][/size][/td][td align=right]-[/td][td align=right]-[/td][td align=right]-[/td][td align=right]-[/td][/tr]<# } #>\
+[tr][td][skill:"<#=skill.name#>" color=<#=color#> size=13][/td]\
+[td align=center][size=13]<#=skill.rank#> [color=gold]<#=erank#>[/color][/size][/td]\
+[td align=center][size=13][color=cornflowerblue]<#=mp#>[/color][/size][/td]\
+[td align=center]-[/td]\
+[td align=right]<#=skill.training_cost_gold#>[/td]\
+[td align=right]<#=skill.training_cost_ep#>[/td][/tr]<# } #>\
 [/table]\
                                                                                                                                             ';
     return template;
@@ -391,19 +399,21 @@ HeroSkill.prototype.parseInfo = function(data) {
     skill_info.innerHTML = data;
     var table_rows = $('.content_table table tr', $('form h1', skill_info).nextSibling.nextSibling);
 
-    //ctual_cost = base_cost * (0.8 + 0.1 * skill_level)
-
     for (var i = 0, cnt = table_rows.length; i < cnt; i++) {
-       var property = table_rows[i].cells[0].innerText.trim(),
-           value = table_rows[i].cells[1].innerText.replace(/(\s|&nbsp;)/g, ' ').trim(),
-           tmp = tmp.appendLine(property + ':' + value);
+        var property = table_rows[i].cells[0].innerText.trim(),
+           value = table_rows[i].cells[1].innerText.replace(/(\s|&nbsp;)/g, ' ').trim();
+
         switch(property) {
             case 'type'                     : this.type = value;  break;
             case 'may be used'              : this.in_round = value.indexOf("in round") > -1;  this.pre_round = value.indexOf("in pre round") > -1;  break;
             case 'target'                   : this.target = value; break;
             case 'Max. characters affected' :
             case 'Max. opponents affected'  : this.max_affected = value; break;
-            case 'Mana points cost'         : if (value !== '-') { var mp = value.match(/([0-9])+ \(([0-9]+)\)/); this.mp_cost = mp[1]; this.mp_base = mp[2]; } break;
+            case 'Mana points cost'         : if (value !== '-') {
+                                                  var mp = value.match(/([0-9])+ \(([0-9]+)\)/);
+                                                  this.mp_base = Number(mp[2]); this.mp_cost = Math.floor(this.mp_base * (0.8 + 0.1 * this.effective_rank)); 
+                                              }
+                                              break;
             case 'item'                     : this.item = value; break;
             case 'skill class'              : this.skill_class = value; break;
             case 'attack type'              : this.attack_type = value; break;
@@ -422,7 +432,7 @@ HeroSkill.prototype.parse = function(row_html) {
         var link = $('a', row_html.cells[1]),
             rank_row = $('tr', row_html.cells[2]),
             rank = rank_row ? rank_row.cells[1].innerText.parseEffectiveValue() : [0,0],
-            title = link.href.match(/name=([a-z :\+]+)/i);
+            title = unescape(link.href).match(/name=([a-z- :\(\)'!\+]+)/i);
 
         if (title != null && rank[0] !== 0)
         {
@@ -438,6 +448,8 @@ HeroSkill.prototype.parse = function(row_html) {
                 default: break;
             }
 
+            this.calculateCost();
+
             //get(link.href, this.parseInfo, this, false);
         }
     }
@@ -448,17 +460,38 @@ HeroSkill.prototype.parse = function(row_html) {
     return this;
 }
 
-HeroSkill.getCost = function(value, gold) {
-    var primaryCosts = {
-        '1': 20, '2': 60, '3': 180, '4': 420, '5': 820, '6': 1420, '7': 2260, '8': 3380, '9': 4820,
-        '10': 6620,  '11': 8820,  '12': 11460,  '13': 0,  '14': 82100, '15': 102800,
-        '16': 126800, '17': 154400, '18': 185900, '19': 221600, '20': 261800,'21': 306800,
-        '22': 356800, '23': 412200, '24': 473300, '25': 540400, '26': 613800,'27': 693800,
-        '28': 780800, '29': 875000, '30': 976800
-    };
-    return attrCosts[value];
-}
 
+var _secCosts = '40,120,400,960,1880,3320,5360,8120,11720,16240,21840,28600,36680,46160,57160,\
+69840,84280,100640,119000,139520,162280,187440,215120,245480,278600,314600,353640,\
+395840,441320,490200,542640,598760,658680,722520,79440,862560,939000,1019920,1105440,195680'.split(','),
+    _excCosts = '50,150,500,1300,2700,4850,7950,12200,17800,24950,33850,44700,57750,73200,91250,\
+112150,136100,163350,194150,228750,267350,320200,357550,409650,466750,529100,596950,670550,\
+750150,836050,928450,1027650,1133900,1247450,1368600,1497600,1634700,1780200,1934400,2097500'.split(','),
+    _talCosts = '1440,3240,5440,8080,11200,14840,19040,23840,29280,35400,42240,49840,58240,\
+67480,77600,88640,100640,113640,127680,142800,159040,176440,195040,214880,236000,258440,282240,\
+307440,334080,362200,391840,423040,455840,490280,526400,564240,603840,645240,688480,733600'.split(',');
+
+HeroSkill.prototype.calculateCost = function() {
+    var cost = 0;
+
+    if (this.primary) {
+        for (var i = this.effective_rank; i > 1; i--) cost += (Math.pow(i, 2) - i) * 20;
+        if (cost === 0) cost = 40;
+    }
+    else if (this.secondary) {
+        cost = _secCosts[this.effective_rank - 1] ? Number(_secCosts[this.effective_rank - 1]) : 0;
+    }
+    else if (this.exceptional) {
+        cost = _excCosts[this.effective_rank - 1] ? Number(_excCosts[this.effective_rank - 1]) : 0;
+    }
+    else if (this.talent) {
+        cost = _talCosts[this.effective_rank - 1] ? Number(_talCosts[this.effective_rank - 1]) : 0;
+    }
+
+    this.training_cost_ep = cost;
+    this.training_cost_gold = cost * 0.9;
+    return this;
+}
 
 HeroSkill.prototype.toString = function() {
      var txt = '';
@@ -509,6 +542,7 @@ var doExport = function(attrHtml) {
     skills.sort(function(x,y) { return y.effective_rank - x.effective_rank; });
 
     hero.skills = skills;
+
     hero.dumpInfo();
 
     return false;
