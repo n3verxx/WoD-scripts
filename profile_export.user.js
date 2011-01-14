@@ -121,6 +121,21 @@ var get = function(url, callback, obj, async) {
     request.send(null);
 }
 
+var parseTemplate = function(tpl, data) {
+    try {
+        var code = "var p=[],print=function(){p.push.apply(p,arguments);};with(obj){p.push('" +
+                   tpl.replace(/[\r\t\n]/g, " ").replace(/'(?=[^#]*#>)/g, "\t").split("'").join("\\'")
+                   .split("\t").join("'").replace(/<#=(.+?)#>/g, "',$1,'").split("<#").join("');")
+                   .split("#>").join("p.push('") + "');}return p.join('');";
+            fn = new Function("obj", code);
+        return fn(data);
+    }
+    catch (ex) {
+        GM_log(ex);
+    }
+    return 'ERROR';
+}
+
 if (Element.prototype) {
     if (!Element.prototype.attr) Element.prototype.attr = attr;
     if (!Element.prototype.css)  Element.prototype.css = css;
@@ -167,6 +182,7 @@ function HeroAttribute(name) {
     this.name = name;
     this.value = 0;
     this.effective_value = 0;
+    this.training_cost = 0;
 }
 
 HeroAttribute.prototype.toString = function() {
@@ -216,19 +232,45 @@ function Hero() {
 }
 
 Hero.prototype.dumpInfo = function() {
+    var tt = parseTemplate(Hero.getProfileTemplate(), {"hero": this});
+    var txt_export = $('h1', form_attr).parentNode.add('textarea').attr({'rows': '4', 'cols': '50'});
+    txt_export.innerHTML = tt.trim();
+}
 
-    var tt = '';
-
-    tt += this.name + ' - ' + this.race + ' - ' + this.char_class + ' - ' + this.level + '\n';
-    tt += 'Fame:' + this.fame + '\n';
-    tt += 'Reset points:' + this.reset_points + '\n';
-    tt += 'Gender:' + this.gender + '\n';
-
-    for(name in this.attributes) {
-        tt += this.attributes[name].toString() + '\n';
-    }
-
-    alert(tt);
+Hero.getProfileTemplate = function() {
+    var template = '\
+                                                                                                                                            \
+[size=13][hero:<#=hero.name#>],[i]<#=hero.title#>[/i] - [class:<#=hero.race#>] [class:<#=hero.char_class#>] - Level <#=hero.level#>[/size]\
+[h1]Characteristics[/h1]\
+[table][tr]\
+[td]\
+[table border=1][tr][th]Attribute[/th][th]Value[/th][th]Spent :ep:[/th][/tr]\
+<# var c = 0, hattr = hero.attributes; for (var key in hattr) { var attr = hattr[key]; var efval = attr.effective_value !== attr.value ? ("[" + attr.effective_value + "]") : ""; c++; if (c > 8) break; #>\
+[tr][td][size=13]<#=attr.name#>[/size][/td][td][size=13]<#=attr.value#> [color=gold]<#=efval#>[/color][/size][/td][td align=right][size=13]<#=attr.training_cost#>[/size][/td][/tr]<# } #>\
+[/table]\
+[/td]\
+[td][/td][td][/td][td][/td]\
+[td valign=top]\
+[table border=1]\
+[tr][td][color=palegreen][size=13]HP[/color][/td][td][size=13]<#=hattr.hp.value#> [color=gold][<#=hattr.hp.effective_value#>][/color][/size][/td][td][color=palegreen][size=13]HHP[/color][/td][td][size=13]<#=hattr.hhp.value#> [color=gold][<#=hattr.hhp.effective_value#>][/color][/size][/td][/tr]\
+[tr][td][color=cornflowerblue][size=13]MP[/color][/td][td][size=13]<#=hattr.mp.value#> [color=gold][<#=hattr.mp.effective_value#>][/color][/size][/td][td][color=cornflowerblue][size=13]RMP[/color][/td][td][size=13]<#=hattr.hhp.value#> [color=gold][<#=hattr.rmp.effective_value#>][/color][/size][/td][/tr]\
+[tr][td colspan=2][size=13]Actions[/size][/td][td colspan=2][size=13]<#=hattr.act.value#> [color=gold][<#=hattr.act.effective_value#>][/color][/size][/td][/tr]\
+[tr][td colspan=2][size=13]Initiative[/size][/td][td colspan=2][size=13]<#=hattr.ini.value#> [color=gold][<#=hattr.ini.effective_value#>][/color][/size][/td][/tr]\
+[tr][td colspan=2][size=13]Reset points[/size][/td][td colspan=2][size=13]<#=hero.reset_points#>[/size][/td][/tr]\
+[tr][td colspan=2][size=13]Gender[/size][/td][td colspan=2][size=13]<#=hero.gender#>[/size][/td][/tr]\
+[tr][td colspan=2][size=13]Fame[/size][/td][td colspan=2][size=13]<#=hero.fame#> :fame:[/size][/td][/tr]\
+[/table]\
+[/td]\
+[/tr][/table]\
+[h1]Skills[/h1]\
+[table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
+<# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color;\
+var erank = skill.effective_rank !== skill.rank ? ("[" + skill.effective_rank + "]") : "";\
+if (skill.primary) color = "gold"; else if (skill.secondary) color = "lightgrey"; else color = "darkgrey";\#>\
+[tr][td][skill:"<#=skill.name#>" color=<#=color#> size=13][/td][td][size=13]<#=skill.rank#> [color=gold]<#=erank#>[/color][/size][/td][td align=right]-[/td][td align=right]-[/td][td align=right]-[/td][td align=right]-[/td][/tr]<# } #>\
+[/table]\
+                                                                                                                                            ';
+    return template;
 }
 
 Hero.prototype.parse = function(html) {
@@ -257,6 +299,7 @@ Hero.prototype.parse = function(html) {
                val = val.cells[1].innerText.parseEffectiveValue();
                attr.value = val[0];
                attr.effective_value = val[1];
+               attr.training_cost = HeroAttribute.getCost(attr.value);
            }
        }
        else {
@@ -316,7 +359,7 @@ Hero.prototype.parse = function(html) {
     return this;
 }
 
-function HeroSkill(name) {
+function HeroSkill() {
     this.name = '';
     this.type = '';
     this.rank = 0;
@@ -324,11 +367,13 @@ function HeroSkill(name) {
     this.primary = false;
     this.secondary = false;
     this.exceptional = false;
+    this.talent = false;
     this.in_round = true;
     this.pre_round = false;
     this.target = '';
     this.max_affected = '';
     this.mp_base = 0;
+    this.mp_cost = 0;
     this.item = '';
     this.skill_class = '';
     this.initiative_attr = '';
@@ -337,12 +382,12 @@ function HeroSkill(name) {
     this.damage_attr = '';
     this.defense_attr = '';
     this.healing_attr = '';
+    this.training_cost_ep = 0;
+    this.training_cost_gold = 0;
 }
 
 HeroSkill.prototype.parseInfo = function(data) {
-    var skill_info = add('div'),
-        tmp = '';
-
+    var skill_info = add('div');
     skill_info.innerHTML = data;
     var table_rows = $('.content_table table tr', $('form h1', skill_info).nextSibling.nextSibling);
 
@@ -358,7 +403,7 @@ HeroSkill.prototype.parseInfo = function(data) {
             case 'target'                   : this.target = value; break;
             case 'Max. characters affected' :
             case 'Max. opponents affected'  : this.max_affected = value; break;
-            case 'Mana points cost'         : this.mp_base = value === '-' ? 0 : value.match(/[0-9]+ \(([0-9]+)\)/)[1]; break;
+            case 'Mana points cost'         : if (value !== '-') { var mp = value.match(/([0-9])+ \(([0-9]+)\)/); this.mp_cost = mp[1]; this.mp_base = mp[2]; } break;
             case 'item'                     : this.item = value; break;
             case 'skill class'              : this.skill_class = value; break;
             case 'attack type'              : this.attack_type = value; break;
@@ -370,44 +415,50 @@ HeroSkill.prototype.parseInfo = function(data) {
             default: break;
         }
     }
-
-    //alert(tmp);
 }
 
 HeroSkill.prototype.parse = function(row_html) {
+    try {
+        var link = $('a', row_html.cells[1]),
+            rank_row = $('tr', row_html.cells[2]),
+            rank = rank_row ? rank_row.cells[1].innerText.parseEffectiveValue() : [0,0],
+            title = link.href.match(/name=([a-z :\+]+)/i);
 
-  try {
-    var link = $('a', row_html.cells[1]),
-        rank_row = $('tr', row_html.cells[2]),
-        rank = rank_row ? rank_row.cells[1].innerText.parseEffectiveValue() : [0,0],
-        title = link.href.match(/name=([a-z :\+]+)/i);
+        if (title != null && rank[0] !== 0)
+        {
+            this.name = title[1].replace(/\+/g, ' ');
+            this.talent = this.name.indexOf('Talent:') > -1;
+            this.rank = rank[0];
+            this.effective_rank = rank[1];
 
-    if (title != null && rank[0] !== 0)
-    {
-        this.name = title[1].replace(/\+/g, ' ');
-        this.rank = rank[0];
-        this.effective_rank = rank[1];
+            switch(link.attr('class')) {
+                case 'skill_primary'  : this.primary     = true; break;
+                case 'skill_secondary': this.secondary   = true; break;
+                case 'skill_foreign'  : this.exceptional = true; break;
+                default: break;
+            }
 
-        switch(link.attr('class')) {
-            case 'skill_primary'  : this.primary     = true; break;
-            case 'skill_secondary': this.secondary   = true; break;
-            case 'skill_foreign'  : this.exceptional = true; break;
-            default: break;
+            //get(link.href, this.parseInfo, this, false);
         }
-
-        //get(link.href, this.parseInfo, this, false);
-    }
-    else {
-        //GM_log();
-    }
     }
     catch (error) {
         GM_log(error);
-        alert(row_html.innerHTML);
     }
 
     return this;
 }
+
+HeroSkill.getCost = function(value, gold) {
+    var primaryCosts = {
+        '1': 20, '2': 60, '3': 180, '4': 420, '5': 820, '6': 1420, '7': 2260, '8': 3380, '9': 4820,
+        '10': 6620,  '11': 8820,  '12': 11460,  '13': 0,  '14': 82100, '15': 102800,
+        '16': 126800, '17': 154400, '18': 185900, '19': 221600, '20': 261800,'21': 306800,
+        '22': 356800, '23': 412200, '24': 473300, '25': 540400, '26': 613800,'27': 693800,
+        '28': 780800, '29': 875000, '30': 976800
+    };
+    return attrCosts[value];
+}
+
 
 HeroSkill.prototype.toString = function() {
      var txt = '';
@@ -422,6 +473,7 @@ HeroSkill.prototype.toString = function() {
      txt = txt.appendLine('Exceptional: ' + this.exceptional);
      txt = txt.appendLine('In-round: ' + this.in_round);
      txt = txt.appendLine('Pre-round: ' + this.pre_round);
+     txt = txt.appendLine('MP cost: ' + this.mp_cost);
      txt = txt.appendLine('MP base: ' + this.mp_base);
      txt = txt.appendLine('Skill Class: ' + this.skill_class);
      txt = txt.appendLine('Initiative attr: ' + this.initiative_attr);
@@ -439,45 +491,25 @@ var exportSkills = function() {
     get(location.href.replace('skills.php', 'attributes.php'), doExport);
 }
 
-var exportProfile = function() {
-    var hero = new Hero();
-    hero.parse(form_attr);
-    hero.dumpInfo();
-    return false;
-}
-
 var doExport = function(attrHtml) {
     var skill_rows = $('.content_table_row_0', form_attr).concat($('.content_table_row_1', form_attr)),
         attr_html = add('div'),
         hero = new Hero();
 
-    //attr_html.innerHTML = attrHtml;
-    //hero.parse($('form', attr_html)[1]);
-    //hero.dumpInfo();
+    attr_html.innerHTML = attrHtml;
+    hero.parse($('form', attr_html)[1]);
 
     var skills = [];
 
     for (var i = 0, cnt = skill_rows.length; i < cnt; i++) {
         var skill = new HeroSkill().parse(skill_rows[i]);
-
-        if (skill.rank > 0) {
-            skills.push(skill);
-            //alert(skill);
-        }
-
-        //if (i == 2) break;
+        if (skill.rank > 0) skills.push(skill);
     }
 
     skills.sort(function(x,y) { return y.effective_rank - x.effective_rank; });
 
-    var t = '' + skills.length + '\n';
-
-    for (var i = 0, cnt = skills.length; i < cnt; i++) {
-        var skill = skills[i];
-        t = t.appendLine(skill.name + ' ' + (skill.rank === skill.effective_rank ? skill.rank : skill.rank + '[' + skill.effective_rank + ']'));
-    }
-
-    alert(t);
+    hero.skills = skills;
+    hero.dumpInfo();
 
     return false;
 }
@@ -497,15 +529,8 @@ if (form_attr && form_attr.action) {
 
             //TODO: parse subclass
             //var subclass = button.parentNode.innerText.trim().match(/[is]/);
-
         }
     }
-//    else  if (form_attr.action.match(/hero\/attributes\.php/i)) {
-//        var title = $('h1', form_attr);
-//        if (title) {
-//            title.add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 10px'}).addEventListener('click', exportProfile, false);
-//        }
-//    }
 }
 
 })();
