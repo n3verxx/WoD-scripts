@@ -498,17 +498,17 @@ HeroSkill.prototype.calculateCost = function() {
     var cost = 0;
 
     if (this.primary) {
-        for (var i = this.effective_rank; i > 1; i--) cost += (Math.pow(i, 2) - i) * 20;
+        for (var i = this.rank; i > 1; i--) cost += (Math.pow(i, 2) - i) * 20;
         if (cost === 0) cost = 40;
     }
     else if (this.secondary) {
-        cost = _secCosts[this.effective_rank - 1] ? Number(_secCosts[this.effective_rank - 1]) : 0;
+        cost = _secCosts[this.rank - 1] ? Number(_secCosts[this.rank - 1]) : 0;
     }
     else if (this.exceptional) {
-        cost = _excCosts[this.effective_rank - 1] ? Number(_excCosts[this.effective_rank - 1]) : 0;
+        cost = _excCosts[this.rank - 1] ? Number(_excCosts[this.rank - 1]) : 0;
     }
     else if (this.talent) {
-        cost = _talCosts[this.effective_rank - 1] ? Number(_talCosts[this.effective_rank - 1]) : 0;
+        cost = _talCosts[this.rank - 1] ? Number(_talCosts[this.rank - 1]) : 0;
     }
 
     this.training_cost_ep = cost;
