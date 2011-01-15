@@ -143,7 +143,7 @@ if (Element.prototype) {
     if (!Element.prototype.add) Element.prototype.add = add;
 }
 else {
-    var elements = ['Body', 'Anchor', 'Div', 'Image', 'Span', 'Heading', 'Input', 'TableRow', 'TableCell'];
+    var elements = ['Body', 'Anchor', 'Div', 'Image', 'Span', 'Heading', 'Input', 'TableRow', 'TableCell', 'TextArea'];
     for (var i = 0, cnt = elements.length; i < cnt; i++) {
         var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
         if (!proto.attr) proto.attr = attr;
@@ -165,6 +165,11 @@ String.prototype.parseEffectiveValue = function(defaultValue) {
 
 String.prototype.appendLine = function(line) {
     return this + line + '\n';
+}
+
+var supportInnerText = typeof Element.prototype != 'undefined';
+var innerText = function(elem) {
+    return supportInnerText ? elem.innerText : elem.textContent;
 }
 
 // --- Classes ---
@@ -273,17 +278,16 @@ Hero.prototype.parse = function(html) {
         var title = $('h1', html),
             content_rows = $('.content_table_row_0', html).concat($('.content_table_row_1', html));
 
-        this.name = title.innerText.replace('- Attributes and Characteristics', '').trim();
+        this.name = innerText(title).replace('- Attributes and Characteristics', '').trim();
 
         var re_attr  = /Strength|Constitution|Intelligence|Dexterity|Charisma|Agility|Perception|Willpower/,
             re_race  = /(Borderlander|Dinturan|Gnome|Halfling|Hill Dwarf|Kerasi|Mag-Mor Elf|Mountain Dwarf|Rashani|Tiram-Ag Elf|Woodlander) \(/,
             re_class = /(Alchemist|Archer|Barbarian|Bard|Drifter|Gladiator|Hunter|Juggler|Knight|Mage|Paladin|Priest|Scholar|Shaman) \(/;
 
-
         for (var i = 0, cnt = content_rows.length; i < cnt; i++) {
             var row = content_rows[i];
             cell1 = row.cells[0],
-                  property = cell1.innerText.trim();
+                  property = innerText(cell1).trim();
             if (property.match(re_attr)) {
                 var race = cell1.innerHTML.match(re_race),
                     ch_class = cell1.innerHTML.match(re_class);
@@ -293,7 +297,7 @@ Hero.prototype.parse = function(html) {
                 if (val.cells) {
                     var attr_name = property.toLowerCase().substring(0, 2).replace('de', 'dx'),
                         attr = this.attributes[attr_name];
-                    val = val.cells[1].innerText.parseEffectiveValue();
+                    val = innerText(val.cells[1]).parseEffectiveValue();
                     attr.value = val[0];
                     attr.effective_value = val[1];
                     attr.training_cost = HeroAttribute.getCost(attr.value);
@@ -302,14 +306,14 @@ Hero.prototype.parse = function(html) {
             else {
                 switch(property.toLowerCase()) {
                     case "hero's level":
-                        this.level = Number(row.cells[1].innerText);
+                        this.level = Number(innerText(row.cells[1]));
                         break;
                     case 'fame':
-                        this.fame = Number(row.cells[1].innerText);
+                        this.fame = Number(innerText(row.cells[1]));
                         break;
                     case 'hit points':
-                        var hp = row.cells[1].innerText.parseEffectiveValue(),
-                            hhp = row.cells[2].innerText.parseEffectiveValue(),
+                        var hp = innerText(row.cells[1]).parseEffectiveValue(),
+                            hhp = innerText(row.cells[2]).parseEffectiveValue(),
                             hpa = this.attributes['hp'],
                             hhpa = this.attributes['hhp'];
                         hpa.value = hp[0];
@@ -318,8 +322,8 @@ Hero.prototype.parse = function(html) {
                         hhpa.effective_value = hhp[1];
                         break;
                     case 'mana points':
-                        var mp = row.cells[1].innerText.parseEffectiveValue(),
-                            rmp = row.cells[2].innerText.parseEffectiveValue(),
+                        var mp = innerText(row.cells[1]).parseEffectiveValue(),
+                            rmp = innerText(row.cells[2]).parseEffectiveValue(),
                             mpa = this.attributes['mp'],
                             rmpa = this.attributes['rmp'];
                         mpa.value = mp[0];
@@ -328,25 +332,25 @@ Hero.prototype.parse = function(html) {
                         rmpa.effective_value = rmp[1];
                         break;
                     case 'actions per round':
-                        var act = row.cells[1].innerText.parseEffectiveValue(),
+                        var act = innerText(row.cells[1]).parseEffectiveValue(),
                             acta = this.attributes['act'];
                         acta.value = act[0];
                         acta.effective_value = act[1];
                         break;
                     case 'reset points':
-                        this.reset_points = Number(row.cells[1].innerText);
+                        this.reset_points = Number(innerText(row.cells[1]));
                         break;
                     case 'title':
-                        this.title = row.cells[1].innerText.replace('Choose title', '').trim();
+                        this.title = innerText(row.cells[1]).replace('Choose title', '').trim();
                         break;
                     case 'initiative':
-                        var ini = row.cells[1].innerText.parseEffectiveValue(),
+                        var ini = innerText(row.cells[1]).parseEffectiveValue(),
                             inia = this.attributes['ini'];
                         inia.value = ini[0];
                         inia.effective_value = ini[1];
                         break;
                     case 'gender':
-                        this.gender = row.cells[1].innerText.trim().toUpperCase()[0];
+                        this.gender = innerText(row.cells[1]).trim().toUpperCase()[0];
                         break;
                     default:
                         break
@@ -397,8 +401,8 @@ HeroSkill.prototype.fetchInfo = function(data) {
         var table_rows = $('.content_table table tr', $('form h1', skill_info).nextSibling.nextSibling);
 
         for (var i = 0, cnt = table_rows.length; i < cnt; i++) {
-            var property = table_rows[i].cells[0].innerText.trim(),
-                value = table_rows[i].cells[1].innerText.replace(/(\s|&nbsp;)/g, ' ').trim();
+            var property = innerText(table_rows[i].cells[0]).trim(),
+                value = innerText(table_rows[i].cells[1]).replace(/(\s|&nbsp;)/g, ' ').trim();
 
             switch(property) {
                 case 'type'                     : this.type = value;  break;
@@ -452,7 +456,7 @@ HeroSkill.prototype.parse = function(row_html) {
     try {
         var link = $('a', row_html.cells[1]),
             rank_row = $('tr', row_html.cells[2]),
-            rank = rank_row ? rank_row.cells[1].innerText.parseEffectiveValue() : [0,0],
+            rank = rank_row ? innerText(rank_row.cells[1]).parseEffectiveValue() : [0,0],
             title = unescape(link.href).match(/name=([a-z- :\(\)'!\+]+)/i);
 
         if (title != null && rank[0] !== 0)
