@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name           Profile Export
 // @namespace      Never
-// @description    Script allows to export hero profile to BBCode
-// @include        http*://*.world-of-dungeons.net/wod/spiel/hero/*.php*
+// @description    Script allows to export hero profile information to BBCode
+// @include        http*://*.world-of-dungeons.net/wod/spiel/hero/skills.php*
 // ==/UserScript==
 //
 
@@ -66,7 +66,6 @@ var attr = function(name, value, remove) {
 
 var css = function(name, value) {
     var estyle = document.defaultView.getComputedStyle(this, null);
-    alert(value);
     if (typeof name === 'object') {
         for (var key in name) {
             estyle.setProperty(key, name[key]);
@@ -167,9 +166,9 @@ String.prototype.appendLine = function(line) {
     return this + line + '\n';
 }
 
-var supportInnerText = typeof Element.prototype != 'undefined';
+var supportsInnerText = typeof Element.prototype !== 'undefined';
 var innerText = function(elem) {
-    return supportInnerText ? elem.innerText : elem.textContent;
+    return supportsInnerText ? elem.innerText : elem.textContent;
 }
 
 // --- Classes ---
@@ -517,31 +516,6 @@ HeroSkill.prototype.calculateCost = function() {
     return this;
 }
 
-HeroSkill.prototype.toString = function() {
-     var txt = '';
-     txt = txt.appendLine('Name: ' + this.name);
-     txt = txt.appendLine('Rank: ' + this.rank);
-     txt = txt.appendLine('Effectice Rank: ' + this.effective_rank);
-     txt = txt.appendLine('Type: ' + this.type);
-     txt = txt.appendLine('Target: ' + this.target);
-     txt = txt.appendLine('Max affected: ' + this.max_affected);
-     txt = txt.appendLine('Primary: ' + this.primary);
-     txt = txt.appendLine('Secondary: ' + this.secondary);
-     txt = txt.appendLine('Exceptional: ' + this.exceptional);
-     txt = txt.appendLine('In-round: ' + this.in_round);
-     txt = txt.appendLine('Pre-round: ' + this.pre_round);
-     txt = txt.appendLine('MP cost: ' + this.mp_cost);
-     txt = txt.appendLine('MP base: ' + this.mp_base);
-     txt = txt.appendLine('Skill Class: ' + this.skill_class);
-     txt = txt.appendLine('Initiative attr: ' + this.initiative_attr);
-     txt = txt.appendLine('Attack type: ' + this.attack_type);
-     txt = txt.appendLine('Attack attr: ' + this.attack_attr);
-     txt = txt.appendLine('Attack dmg: ' + this.damage_attr);
-     txt = txt.appendLine('Defense attr: ' + this.defense_attr);
-     txt = txt.appendLine('Healing attr: ' + this.healing_attr);
-     return txt;
-}
-
 // --- Main ---
 
 var g_form_skills = $('#main_content form'),
@@ -586,7 +560,6 @@ var exportSkills = function() {
 
 var showResult = function(skill) {
     if (skill) g_jobs--;
-    //GM_log(skill.name + ": " + g_jobs);
     if (g_jobs === 0) {
         var h1 = $('h1', g_form_skills),
             txt_export = $('#profile-export-result', h1),
