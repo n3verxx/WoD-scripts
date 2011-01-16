@@ -8,6 +8,8 @@
 
 (function() {
 
+var VERSION = '1.0.1';
+
 // --- Helpers ---
 
 function $(selector, parentNode) {
@@ -156,14 +158,22 @@ String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g, '');
 }
 
+String.prototype.pad = function(len, str, left) {
+    var res = this,
+        tmp = str || ' ';
+    if (left === true) {
+        while (res.length < len) res = tmp + res;
+    }
+    else {
+        while (res.length < len) res += tmp;
+    }
+    return res;
+}
+
 String.prototype.parseEffectiveValue = function(defaultValue) {
     var val = this.replace(/[a-z:,\s\n]+/gi, '').match(/([0-9]+)(\[([0-9-]+)\])?/);
     if (val === null) return [0,0];
     return  val[3] ? [Number(val[1]), Number(val[3])] : [Number(val[1]), Number(val[1])];
-}
-
-String.prototype.appendLine = function(line) {
-    return this + line + '\n';
 }
 
 var supportsInnerText = typeof Element.prototype !== 'undefined';
@@ -184,15 +194,11 @@ HeroAttribute.prototype.toString = function() {
     return this.name + ' ' + this.value + (this.effective_value != 0 ? '[' + this.effective_value + ']' : '') + ' ' + HeroAttribute.getCost(this.value);
 }
 
+var _attrCosts = '0,0,100,500,1300,2800,5100,8500,13200,19400,27400,37400,49700,64500,82100,102800,126800,154400,\
+185900,221600,261800,306800,356800,412200,473300,540400,613800,693800,780800,875000,976800'.split(',');
+
 HeroAttribute.getCost = function(value) {
-    var attrCosts = {
-        '1': 0, '2': 100, '3': 500, '4': 1300, '5': 2800, '6': 5100, '7': 8500, '8': 13200, '9': 19400, 
-        '10': 27400,  '11': 37400,  '12': 49700,  '13': 64500,  '14': 82100, '15': 102800,
-        '16': 126800, '17': 154400, '18': 185900, '19': 221600, '20': 261800,'21': 306800,
-        '22': 356800, '23': 412200, '24': 473300, '25': 540400, '26': 613800,'27': 693800,
-        '28': 780800, '29': 875000, '30': 976800
-    };
-    return attrCosts[value];
+    return _attrCosts[value] ? Number(_attrCosts[value]) : 0;
 }
 
 function Hero() {
@@ -259,12 +265,13 @@ Hero.getProfileTemplate = function() {
 [table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
 var erank = skill.effective_rank !== skill.rank ? ("[" + skill.effective_rank + "]") : "";\
+var pos_mark = skill.max_affected && skill.one_pos ? "&sup1;" : "";\
 var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type.match(/attack|degradation/) ? "tomato" : "palegreen");\
-if (skill.primary) color_skill = "gold"; else if (skill.secondary) color_skill = "lightgrey"; else color_skill = "darkgrey";\#>\
+if (skill.primary || skill.talent) color_skill = "gold"; else if (skill.secondary) color_skill = "lightgrey"; else color_skill = "darkgrey";\#>\
 [tr][td][skill:"<#=skill.name#>" color=<#=color_skill#> size=13][/td]\
 [td align=center][size=13]<#=skill.rank#> [color=gold]<#=erank#>[/color][/size][/td]\
 [td align=center][size=13][color=cornflowerblue]<#=mp#>[/color][/size][/td]\
-[td align=center][size=13][color=<#=color_affect#>]<#=skill.max_affected#>[/color][/size][/td]\
+[td align=center][size=13][color=<#=color_affect#>]<#=skill.max_affected#><#=pos_mark#>[/color][/size][/td]\
 [td align=right]<#=skill.training_cost_gold#>[/td]\
 [td align=right]<#=skill.training_cost_ep#>[/td][/tr]<# } #>\
 [/table]\
@@ -376,6 +383,7 @@ function HeroSkill() {
     this.pre_round = false;
     this.target = '';
     this.max_affected = '';
+    this.one_pos = false;
     this.mp_base = 0;
     this.mp_cost = 0;
     this.item = '';
@@ -406,7 +414,7 @@ HeroSkill.prototype.fetchInfo = function(data) {
             switch(property) {
                 case 'type'                     : this.type = value;  break;
                 case 'may be used'              : this.in_round = value.indexOf("in round") > -1;  this.pre_round = value.indexOf("in pre round") > -1;  break;
-                case 'target'                   : this.target = value; break;
+                case 'target'                   : this.target = value; this.one_pos = value.indexOf('one position') > -1; break;
                 case 'Max. characters affected' :
                 case 'Max. opponents affected'  : this.max_affected = value; break;
                 case 'Mana points cost'         : if (value !== '-') {
@@ -466,11 +474,13 @@ HeroSkill.prototype.parse = function(row_html) {
             this.effective_rank = rank[1];
             this.url = link.href;
 
-            switch(link.attr('class')) {
-                case 'skill_primary'  : this.primary     = true; break;
-                case 'skill_secondary': this.secondary   = true; break;
-                case 'skill_foreign'  : this.exceptional = true; break;
-                default: break;
+            if (!this.talent) {
+                switch(link.attr('class')) {
+                    case 'skill_primary'  : this.primary     = true; break;
+                    case 'skill_secondary': this.secondary   = true; break;
+                    case 'skill_foreign'  : this.exceptional = true; break;
+                    default: break;
+                }
             }
 
             this.calculateCost();
@@ -484,13 +494,13 @@ HeroSkill.prototype.parse = function(row_html) {
 }
 
 
-var _secCosts = '40,120,400,960,1880,3320,5360,8120,11720,16240,21840,28600,36680,46160,57160,\
+var _secCosts = '0,40,120,400,960,1880,3320,5360,8120,11720,16240,21840,28600,36680,46160,57160,\
 69840,84280,100640,119000,139520,162280,187440,215120,245480,278600,314600,353640,\
 395840,441320,490200,542640,598760,658680,722520,79440,862560,939000,1019920,1105440,195680'.split(','),
-    _excCosts = '50,150,500,1300,2700,4850,7950,12200,17800,24950,33850,44700,57750,73200,91250,\
+    _excCosts = '0,50,150,500,1300,2700,4850,7950,12200,17800,24950,33850,44700,57750,73200,91250,\
 112150,136100,163350,194150,228750,267350,320200,357550,409650,466750,529100,596950,670550,\
 750150,836050,928450,1027650,1133900,1247450,1368600,1497600,1634700,1780200,1934400,2097500'.split(','),
-    _talCosts = '1440,3240,5440,8080,11200,14840,19040,23840,29280,35400,42240,49840,58240,\
+    _talCosts = '0,1440,3240,5440,8080,11200,14840,19040,23840,29280,35400,42240,49840,58240,\
 67480,77600,88640,100640,113640,127680,142800,159040,176440,195040,214880,236000,258440,282240,\
 307440,334080,362200,391840,423040,455840,490280,526400,564240,603840,645240,688480,733600'.split(',');
 
@@ -502,13 +512,13 @@ HeroSkill.prototype.calculateCost = function() {
         if (cost === 0) cost = 40;
     }
     else if (this.secondary) {
-        cost = _secCosts[this.rank - 1] ? Number(_secCosts[this.rank - 1]) : 0;
+        cost = _secCosts[this.rank] ? Number(_secCosts[this.rank]) : 0;
     }
     else if (this.exceptional) {
-        cost = _excCosts[this.rank - 1] ? Number(_excCosts[this.rank - 1]) : 0;
+        cost = _excCosts[this.rank] ? Number(_excCosts[this.rank]) : 0;
     }
     else if (this.talent) {
-        cost = _talCosts[this.rank - 1] ? Number(_talCosts[this.rank - 1]) : 0;
+        cost = _talCosts[this.rank] ? Number(_talCosts[this.rank]) : 0;
     }
 
     this.training_cost_ep = cost;
@@ -526,7 +536,7 @@ var g_form_skills = $('#main_content form'),
 
 var exportSkills = function() {
 
-    g_button_export.attr('disabled', 'true').cssClass('clickable', false);
+    g_button_export.attr('disabled', 'true').cssClass('button clickable', false).cssClass('button_disabled', true);
     g_img_wait.attr('style', null, true);
 
     get(location.href.replace('skills.php', 'attributes.php'), function(attrHtml) {
@@ -563,9 +573,13 @@ var showResult = function(skill) {
     if (g_jobs === 0) {
         var h1 = $('h1', g_form_skills),
             txt_export = $('#profile-export-result', h1),
-            bbcode = g_hero.generateBBCode();
+            date = new Date(),
+            stamp = [date.getDate().toString().pad(2, '0', true), (date.getMonth() + 1).toString().pad(2, '0', true), date.getFullYear().toString().substring(2)].join('.'),
+            url = '[url=https://github.com/n3ver/WoD-scripts/raw/master/profile_export.user.js]Profile Export[/url]',
+            bbcode = g_hero.generateBBCode().trim() + '[size=9]\nGenerated: ' + stamp + ' - ' + url + ' ' + VERSION + '[/size]';
+
         if (!txt_export) txt_export = h1.parentNode.add('textarea').attr({'rows': '4', 'cols': '50', 'id': 'profile-export-result'});
-        txt_export.innerHTML = bbcode.trim();
+        txt_export.innerHTML = bbcode;
         g_img_wait.attr('style', 'display: none');
     }
 }
