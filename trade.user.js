@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name           Trade Tidy
+// @name           Tidy Trade
 // @namespace      Never
 // @description    Sorts trade items and calculates the total sum uses
 // @include        http*://*.world-of-dungeons.net/wod/spiel/trade/exchange_details*
