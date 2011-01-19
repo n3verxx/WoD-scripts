@@ -4,7 +4,6 @@
 // @description    Script allows to export hero profile information to BBCode
 // @include        http*://*.world-of-dungeons.net/wod/spiel/hero/skills.php*
 // ==/UserScript==
-//
 
 (function() {
 
@@ -97,6 +96,12 @@ var add = function(value) {
     return newElem;
 }
 
+var supportsInnerText = typeof Element.prototype !== 'undefined';
+var innerText = function(elem) {
+    if (!elem) return '';
+    return supportsInnerText ? elem.innerText : elem.textContent;
+}
+
 var get = function(url, callback, obj, async) {
     var request = new XMLHttpRequest(),
         sync = typeof async === 'undefined' ? true : async;
@@ -174,11 +179,6 @@ String.prototype.parseEffectiveValue = function(defaultValue) {
     var val = this.replace(/[a-z:,\s\n]+/gi, '').match(/([0-9]+)(\[([0-9-]+)\])?/);
     if (val === null) return [0,0];
     return  val[3] ? [Number(val[1]), Number(val[3])] : [Number(val[1]), Number(val[1])];
-}
-
-var supportsInnerText = typeof Element.prototype !== 'undefined';
-var innerText = function(elem) {
-    return supportsInnerText ? elem.innerText : elem.textContent;
 }
 
 // --- Classes ---

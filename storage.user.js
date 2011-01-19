@@ -4,7 +4,6 @@
 // @description    Adds additional functionality for groups storage and treasure vault management
 // @include        http*://*.world-of-dungeons.net/wod/spiel/hero/items.php*
 // ==/UserScript==
-//
 
 (function() {
 
@@ -70,8 +69,6 @@ var add = function(value) {
     if (this.nodeType) this.appendChild(newElem);
     return newElem;
 }
-
-
 
 if (Element.prototype) {
     if (!Element.prototype.attr) Element.prototype.attr = attr;
