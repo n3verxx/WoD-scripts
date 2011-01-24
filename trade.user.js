@@ -98,6 +98,7 @@ String.prototype.trim = function() {
 var tidyTrade = function (table) {
     var rows = $('tr', table.cloneNode(true));
 
+    if (rows && rows.constructor != Array) rows = [rows];
     if (!rows || rows.length < 1) return;
 
     var holder   = table.parentNode,
@@ -135,7 +136,7 @@ var tidyTrade = function (table) {
 
     for (var i = 0, cnt = items.length; i < cnt; i++) {
         var item   = items[i],
-            size   = '&nbsp;' + item.size;
+            size   = '&nbsp;' + item.size,
             row    = newTable.add('tr'),
             no     = row.add('td').attr('align', 'right').innerHTML = i + 1,
             c_cond = row.add('td').attr('valign', 'top').add(item.condition),
