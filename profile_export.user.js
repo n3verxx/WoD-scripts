@@ -4,6 +4,7 @@
 // @description    Script allows to export hero profile information to BBCode
 // @include        http*://*.world-of-dungeons.net/wod/spiel/hero/skills.php*
 // ==/UserScript==
+//
 
 (function() {
 
@@ -96,12 +97,6 @@ var add = function(value) {
     return newElem;
 }
 
-var supportsInnerText = typeof Element.prototype !== 'undefined';
-var innerText = function(elem) {
-    if (!elem) return '';
-    return supportsInnerText ? elem.innerText : elem.textContent;
-}
-
 var get = function(url, callback, obj, async) {
     var request = new XMLHttpRequest(),
         sync = typeof async === 'undefined' ? true : async;
@@ -125,6 +120,11 @@ var get = function(url, callback, obj, async) {
     };
     request.open('GET', url, sync);
     request.send(null);
+}
+
+var supportsInnerText = typeof Element.prototype !== 'undefined',
+    innerText = function(elem) {
+    return supportsInnerText ? elem.innerText : elem.textContent;
 }
 
 var parseTemplate = function(tpl, data) {
@@ -230,6 +230,7 @@ function Hero() {
         'ini': new HeroAttribute('Initiative'),
         'act': new HeroAttribute('Actions'),
     };
+    this.armor = {};
 }
 
 Hero.prototype.generateBBCode = function() {
@@ -261,6 +262,16 @@ Hero.getProfileTemplate = function() {
 [/table]\
 [/td]\
 [/tr][/table]\
+[h1]Armor[/h1]\
+[table border=1]\
+[tr][th][size=13]Damage type[/size][/th][th][size=13]Attack type[/size][/th][th][size=13]Armor (r)[/size][/th][/tr]\
+<# var armor = hero.armor; for (var dmg_type in armor) { var arm = armor[dmg_type]; for (var atk_type in arm) { var val = arm[atk_type].split("/"); #>\
+[tr][td][size=13]<#=dmg_type#>[/size][/td][td align=center][size=13]<#=atk_type#>[/size][/td]\
+[td][size=13]<#if(val[0]>0){#>[color=palegreen]<#}#><#=val[0]#><#if(val[0]>0){#>[/color]<#}#>\
+ / <#if(val[1]>0){#>[color=palegreen]<#}#><#=val[1]#><#if(val[1]>0){#>[/color]<#}#>\
+ / <#if(val[2]>0){#>[color=palegreen]<#}#><#=val[2]#><#if(val[2]>0){#>[/color]<#}#>[/size][/td]\
+[/tr]<#}}#>\
+[/table]  r - for normal / good / critical hits\
 [h1]Skills[/h1]\
 [table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
@@ -274,7 +285,8 @@ if (skill.primary || skill.talent) color_skill = "gold"; else if (skill.secondar
 [td align=center][size=13][color=<#=color_affect#>]<#=skill.max_affected#><#=pos_mark#>[/color][/size][/td]\
 [td align=right]<#=skill.training_cost_gold#>[/td]\
 [td align=right]<#=skill.training_cost_ep#>[/td][/tr]<# } #>\
-[/table]\
+[/table]  1 - in one position\
+\
 ';
     return template;
 }
@@ -357,6 +369,23 @@ Hero.prototype.parse = function(html) {
                         break;
                     case 'gender':
                         this.gender = innerText(row.cells[1]).trim().toUpperCase()[0];
+                        break;
+                    case 'crushing damage':
+                    case 'lightning damage':
+                    case 'ice damage':
+                    case 'fire damage':
+                    case 'poison damage':
+                    case 'crushing damage':
+                    case 'mana damage':
+                    case 'psychological damage':
+                    case 'acid damage':
+                    case 'cutting damage':
+                    case 'piercing damage':
+                        var attack_type = innerText(row.cells[1]).replace('(z)', '').trim(),
+                            value = innerText(row.cells[2]).replace(/(\s|&nbsp;)/g, '').trim();
+                        if (!this.armor[property]) this.armor[property] = {};
+                        var a = this.armor[property];
+                        a[attack_type] = value;
                         break;
                     default:
                         break
@@ -576,7 +605,7 @@ var showResult = function(skill) {
             date = new Date(),
             stamp = [date.getDate().toString().pad(2, '0', true), (date.getMonth() + 1).toString().pad(2, '0', true), date.getFullYear().toString().substring(2)].join('.'),
             url = '[url=https://github.com/n3ver/WoD-scripts/raw/master/profile_export.user.js]Profile Export[/url]',
-            bbcode = g_hero.generateBBCode().trim() + '[size=9]\nGenerated: ' + stamp + ' - ' + url + ' ' + VERSION + '[/size]';
+            bbcode = g_hero.generateBBCode().trim() + '\n[size=9]\nGenerated: ' + stamp + ' - ' + url + ' ' + VERSION + '[/size]';
 
         if (!txt_export) txt_export = h1.parentNode.add('textarea').attr({'rows': '4', 'cols': '50', 'id': 'profile-export-result'});
         txt_export.innerHTML = bbcode;
