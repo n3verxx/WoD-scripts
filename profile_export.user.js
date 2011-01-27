@@ -8,7 +8,7 @@
 
 (function() {
 
-var VERSION = '1.0.1';
+var VERSION = '1.0.2';
 
 // --- Helpers ---
 
@@ -240,52 +240,52 @@ Hero.prototype.generateBBCode = function() {
 Hero.getProfileTemplate = function() {
     var template = '\
                                                                                                                                             \
-[size=13][hero:<#=hero.name#>]<#if(hero.title){#>,<#}#>[i]<#=hero.title#>[/i] - [class:<#=hero.race#>] [class:<#=hero.char_class#>] - Level <#=hero.level#>[/size]\
+[size=12][hero:<#=hero.name#>]<#if(hero.title){#>, <#}#>[i]<#=hero.title#>[/i] - [class:<#=hero.race#>] [class:<#=hero.char_class#>] - Level <#=hero.level#>[/size]\
 [h1]Characteristics[/h1]\
 [table][tr]\
 [td]\
 [table border=1][tr][th]Attribute[/th][th]Value[/th][th]Spent :ep:[/th][/tr]\
 <# var c = 0, hattr = hero.attributes; for (var key in hattr) { var attr = hattr[key]; var efval = attr.effective_value !== attr.value ? ("[" + attr.effective_value + "]") : ""; c++; if (c > 8) break; #>\
-[tr][td][size=13]<#=attr.name#>[/size][/td][td align=center][size=13]<#=attr.value#> [color=gold]<#=efval#>[/color][/size][/td][td align=right][size=13]<#=attr.training_cost#>[/size][/td][/tr]<# } #>\
+[tr][td][size=12]<#=attr.name#>[/size][/td][td align=center][size=12]<#=attr.value#> [url=" "]<#=efval#>[/url][/size][/td][td align=right][size=12]<#=attr.training_cost#>[/size][/td][/tr]<# } #>\
 [/table]\
 [/td]\
 [td][/td][td][/td][td][/td]\
 [td valign=top]\
 [table border=1]\
-[tr][td][color=palegreen][size=13]HP[/color][/td][td][size=13]<#=hattr.hp.value#> [color=gold][<#=hattr.hp.effective_value#>][/color][/size][/td][td][color=palegreen][size=13]HHP[/color][/td][td][size=13]<#=hattr.hhp.value#> [color=gold][<#=hattr.hhp.effective_value#>][/color][/size][/td][/tr]\
-[tr][td][color=cornflowerblue][size=13]MP[/color][/td][td][size=13]<#=hattr.mp.value#> [color=gold][<#=hattr.mp.effective_value#>][/color][/size][/td][td][color=cornflowerblue][size=13]RMP[/color][/td][td][size=13]<#=hattr.hhp.value#> [color=gold][<#=hattr.rmp.effective_value#>][/color][/size][/td][/tr]\
-[tr][td colspan=2][size=13]Actions[/size][/td][td colspan=2][size=13]<#=hattr.act.value#> [color=gold][<#=hattr.act.effective_value#>][/color][/size][/td][/tr]\
-[tr][td colspan=2][size=13]Initiative[/size][/td][td colspan=2][size=13]<#=hattr.ini.value#> [color=gold][<#=hattr.ini.effective_value#>][/color][/size][/td][/tr]\
-[tr][td colspan=2][size=13]Reset points[/size][/td][td colspan=2][size=13]<#=hero.reset_points#>[/size][/td][/tr]\
-[tr][td colspan=2][size=13]Gender[/size][/td][td colspan=2][size=13]<#=hero.gender#>[/size][/td][/tr]\
-[tr][td colspan=2][size=13]Fame[/size][/td][td colspan=2][size=13]<#=hero.fame#> :fame:[/size][/td][/tr]\
+[tr][td][color=mediumseagreen][size=12]HP[/color][/td][td][size=12]<#=hattr.hp.value#> [url=" "][<#=hattr.hp.effective_value#>][/url][/size][/td][td][color=mediumseagreen][size=12]HHP[/color][/td][td][size=12]<#=hattr.hhp.value#> [url=" "][<#=hattr.hhp.effective_value#>][/url][/size][/td][/tr]\
+[tr][td][color=dodgerblue][size=12]MP[/color][/td][td][size=12]<#=hattr.mp.value#> [url=" "][<#=hattr.mp.effective_value#>][/url][/size][/td][td][color=dodgerblue][size=12]RMP[/color][/td][td][size=12]<#=hattr.hhp.value#> [url=" "][<#=hattr.rmp.effective_value#>][/url][/size][/td][/tr]\
+[tr][td colspan=2][size=12]Actions[/size][/td][td colspan=2][size=12]<#=hattr.act.value#> [url=" "][<#=hattr.act.effective_value#>][/url][/size][/td][/tr]\
+[tr][td colspan=2][size=12]Initiative[/size][/td][td colspan=2][size=12]<#=hattr.ini.value#> [url=" "][<#=hattr.ini.effective_value#>][/url][/size][/td][/tr]\
+[tr][td colspan=2][size=12]Reset points[/size][/td][td colspan=2][size=12]<#=hero.reset_points#>[/size][/td][/tr]\
+[tr][td colspan=2][size=12]Gender[/size][/td][td colspan=2][size=12]<#=hero.gender#>[/size][/td][/tr]\
+[tr][td colspan=2][size=12]Fame[/size][/td][td colspan=2][size=12]<#=hero.fame#> :fame:[/size][/td][/tr]\
 [/table]\
 [/td]\
 [/tr][/table]\
 [h1]Armor[/h1]\
 [table border=1]\
-[tr][th][size=13]Damage type[/size][/th][th][size=13]Attack type[/size][/th][th][size=13]Armor (r)[/size][/th][/tr]\
+[tr][th][size=12]Damage type[/size][/th][th][size=12]Attack type[/size][/th][th][size=12]Armor (r)[/size][/th][/tr]\
 <# var armor = hero.armor; for (var dmg_type in armor) { var arm = armor[dmg_type]; for (var atk_type in arm) { var val = arm[atk_type].split("/"); #>\
-[tr][td][size=13]<#=dmg_type#>[/size][/td][td align=center][size=13]<#=atk_type#>[/size][/td]\
-[td][size=13]<#if(val[0]>0){#>[color=palegreen]<#}#><#=val[0]#><#if(val[0]>0){#>[/color]<#}#>\
- / <#if(val[1]>0){#>[color=palegreen]<#}#><#=val[1]#><#if(val[1]>0){#>[/color]<#}#>\
- / <#if(val[2]>0){#>[color=palegreen]<#}#><#=val[2]#><#if(val[2]>0){#>[/color]<#}#>[/size][/td]\
+[tr][td][size=12]<#=dmg_type#>[/size][/td][td align=center][size=12]<#=atk_type#>[/size][/td]\
+[td][size=12]<#if(val[0]>0){#>[color=mediumseagreen]<#}#><#=val[0]#><#if(val[0]>0){#>[/color]<#}#>\
+ / <#if(val[1]>0){#>[color=mediumseagreen]<#}#><#=val[1]#><#if(val[1]>0){#>[/color]<#}#>\
+ / <#if(val[2]>0){#>[color=mediumseagreen]<#}#><#=val[2]#><#if(val[2]>0){#>[/color]<#}#>[/size][/td]\
 [/tr]<#}}#>\
-[/table]  r - for normal / good / critical hits\
+[/table]  [size=10]r - for normal / good / critical hits[/size]\
 [h1]Skills[/h1]\
 [table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
 var erank = skill.effective_rank !== skill.rank ? ("[" + skill.effective_rank + "]") : "";\
 var pos_mark = skill.max_affected && skill.one_pos ? "&sup1;" : "";\
-var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type.match(/attack|degradation/) ? "tomato" : "palegreen");\
-if (skill.primary || skill.talent) color_skill = "gold"; else if (skill.secondary) color_skill = "lightgrey"; else color_skill = "darkgrey";\#>\
-[tr][td][skill:"<#=skill.name#>" color=<#=color_skill#> size=13][/td]\
-[td align=center][size=13]<#=skill.rank#> [color=gold]<#=erank#>[/color][/size][/td]\
-[td align=center][size=13][color=cornflowerblue]<#=mp#>[/color][/size][/td]\
-[td align=center][size=13][color=<#=color_affect#>]<#=skill.max_affected#><#=pos_mark#>[/color][/size][/td]\
+var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type.match(/attack|degradation/) ? "tomato" : "mediumseagreen");\
+if (skill.primary || skill.talent) color_skill = false; else if (skill.secondary) color_skill = "lightslategray"; else color_skill = "#858585";\#>\
+[tr][td][skill:"<#=skill.name#>" <#if(color_skill){#>color=<#=color_skill#><#}#> size=12][/td]\
+[td align=center][size=12]<#=skill.rank#> [url=" "]<#=erank#>[/url][/size][/td]\
+[td align=center][size=12][color=dodgerblue]<#=mp#>[/color][/size][/td]\
+[td align=center][size=12][color=<#=color_affect#>]<#=skill.max_affected#><#=pos_mark#>[/color][/size][/td]\
 [td align=right]<#=skill.training_cost_gold#>[/td]\
 [td align=right]<#=skill.training_cost_ep#>[/td][/tr]<# } #>\
-[/table]  1 - in one position\
+[/table]  [size=10]1 - in one position[/size]\
 \
 ';
     return template;
