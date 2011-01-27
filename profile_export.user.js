@@ -98,28 +98,27 @@ var add = function(value) {
 }
 
 var get = function(url, callback, obj, async) {
-    var request = new XMLHttpRequest(),
-        sync = typeof async === 'undefined' ? true : async;
-    request.onreadystatechange = function() {
-        if (request.readyState === 4) {
+  GM_xmlhttpRequest({
+      method: 'GET',
+      url: url,
+      onload: function(request) {
+          if (request.readyState === 4) {
+              if (request.status !== 200) {
+                  alert('Data fetch failed');
+                  return false;
+              }
 
-            if (request.status !== 200) {
-                alert('Data fetch failed');
-                return false;
-            }
-
-            if (typeof callback === 'function') {
-                if (!obj) {
-                    callback(request.responseText);
-                }
-                else {
-                    callback.call(obj, request.responseText);
-                }
-            }
-        }
-    };
-    request.open('GET', url, sync);
-    request.send(null);
+              if (typeof callback === 'function') {
+                  if (!obj) {
+                      callback(request.responseText);
+                  }
+                  else {
+                      callback.call(obj, request.responseText);
+                  }
+              }
+          }
+      }
+  });
 }
 
 var supportsInnerText = typeof Element.prototype !== 'undefined',
