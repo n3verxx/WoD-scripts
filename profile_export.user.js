@@ -433,7 +433,7 @@ HeroSkill.prototype.fetchInfo = function(data) {
     try {
         var skill_info = add('div');
         skill_info.innerHTML = data;
-        var table_rows = $('.content_table table tr', $('form h1', skill_info).nextSibling.nextSibling);
+        var table_rows = $('.content_table table tr', $('form', skill_info));
 
         for (var i = 0, cnt = table_rows.length; i < cnt; i++) {
             var property = innerText(table_rows[i].cells[0]).trim(),
