@@ -8,7 +8,16 @@
 
 (function() {
 
-var VERSION = '1.0.2';
+var VERSION = '1.0.3';
+
+/***
+ * TODO:
+ *   - parse race
+ *   - parse skill modifiers
+ *   - parse equipment
+ *   - parse subclass
+ *   - parse talents
+ */
 
 // --- Helpers ---
 
@@ -107,7 +116,6 @@ var get = function(url, callback, obj, async) {
                   alert('Data fetch failed');
                   return false;
               }
-
               if (typeof callback === 'function') {
                   if (!obj) {
                       callback(request.responseText);
@@ -189,10 +197,6 @@ function HeroAttribute(name) {
     this.training_cost = 0;
 }
 
-HeroAttribute.prototype.toString = function() {
-    return this.name + ' ' + this.value + (this.effective_value != 0 ? '[' + this.effective_value + ']' : '') + ' ' + HeroAttribute.getCost(this.value);
-}
-
 var _attrCosts = '0,0,100,500,1300,2800,5100,8500,13200,19400,27400,37400,49700,64500,82100,102800,126800,154400,\
 185900,221600,261800,306800,356800,412200,473300,540400,613800,693800,780800,875000,976800'.split(',');
 
@@ -271,17 +275,43 @@ Hero.getProfileTemplate = function() {
  / <#if(val[2]>0){#>[color=mediumseagreen]<#}#><#=val[2]#><#if(val[2]>0){#>[/color]<#}#>[/size][/td]\
 [/tr]<#}}#>\
 [/table]  [size=10]r - for normal / good / critical hits[/size]\
+[h1]Initiative[/h1]\
+[table border=1]\
+[tr][th]Skill[/th][th]Attributes[/th][th]Initiative[/th][/tr]\
+[tr][td]Standard (no skill)[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value+hattr.ini.effective_value#>[/td][/tr]\
+<# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
+if (skill.type === "initiative"){ var m = skill.initiative_attr.match(/[a-z]{2}/gi), attr1 = hattr[m[0]], attr2 = hattr[m[1]];#>\
+[tr][td][skill:"<#=skill.name#>" <#if(skill.color)#>color=<#=skill.color#><#;#> size=12][/td][td align=center]<#=skill.initiative_attr#>[/td][td align=center]<#=attr1.effective_value*2+attr2.effective_value+skill.effective_rank*2+hattr.ini.effective_value#>[/td][/tr]\
+<#}}#>\
+[/table]\
+[h1]Standard Parries[/h1]\
+[table border=1]\
+[tr][th]Attack type[/th][th]Attributes[/th][th]Defence[/th][/tr]\
+[tr][td]Melee[/td][td align=center]ag,dx[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.dx.effective_value#>[/td][/tr]\
+[tr][td]Ranged[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value#>[/td][/tr]\
+[tr][td]Spell[/td][td align=center]wi,in[/td][td align=center]<#=hattr.wi.effective_value*2+hattr["in"].effective_value#>[/td][/tr]\
+[tr][td]Social[/td][td align=center]wi,ch[/td][td align=center]<#=hattr.wi.effective_value*2+hattr.ch.effective_value#>[/td][/tr]\
+[tr][td]Ambush[/td][td align=center]pe,in[/td][td align=center]<#=hattr.pe.effective_value*2+hattr["in"].effective_value#>[/td][/tr]\
+[tr][td]Force of Nature[/td][td align=center]wi,ag[/td][td align=center]<#=hattr.wi.effective_value*2+hattr.ag.effective_value#>[/td][/tr]\
+[tr][td]Activate trap[/td][td align=center]pe,ag[/td][td align=center]<#=hattr.pe.effective_value*2+hattr.ag.effective_value#>[/td][/tr]\
+[tr][td]Explosion or Blast[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value#>[/td][/tr]\
+[tr][td]Disease[/td][td align=center]co,ch[/td][td align=center]<#=hattr.co.effective_value*2+hattr.ch.effective_value#>[/td][/tr]\
+[tr][td]Curse[/td][td align=center]ch,wi[/td][td align=center]<#=hattr.ch.effective_value*2+hattr.wi.effective_value#>[/td][/tr]\
+[/table]\
 [h1]Skills[/h1]\
-[table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
+[table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th]Attack[/th][th]Defence[/th][th]Effect[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
 var erank = skill.effective_rank !== skill.rank ? ("[" + skill.effective_rank + "]") : "";\
 var pos_mark = skill.max_affected && skill.one_pos ? "&sup1;" : "";\
-var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type.match(/attack|degradation/) ? "tomato" : "mediumseagreen");\
-if (skill.primary || skill.talent) color_skill = false; else if (skill.secondary) color_skill = "lightslategray"; else color_skill = "#858585";\#>\
-[tr][td][skill:"<#=skill.name#>" <#if(color_skill){#>color=<#=color_skill#><#}#> size=12][/td]\
+var r = skill.roll();\
+var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type.match(/attack|degradation/) ? "tomato" : "mediumseagreen");#>\
+[tr][td][skill:"<#=skill.name#>" <#if(skill.color)#>color=<#=skill.color#><#;#> size=12][/td]\
 [td align=center][size=12]<#=skill.rank#> [url=" "]<#=erank#>[/url][/size][/td]\
 [td align=center][size=12][color=dodgerblue]<#=mp#>[/color][/size][/td]\
 [td align=center][size=12][color=<#=color_affect#>]<#=skill.max_affected#><#=pos_mark#>[/color][/size][/td]\
+[td align=center][size=12]<#=r.attack#>[/size][/td]\
+[td align=center][size=12]<#=r.defence#>[/size][/td]\
+[td align=center][size=12][color=<#=color_affect#>]<#=r.effect#>[/color][/size][/td]\
 [td align=right]<#=skill.training_cost_gold#>[/td]\
 [td align=right]<#=skill.training_cost_ep#>[/td][/tr]<# } #>\
 [/table]  [size=10]1 - in one position[/size]\
@@ -419,14 +449,47 @@ function HeroSkill() {
     this.initiative_attr = '';
     this.attack_type = '';
     this.attack_attr = '';
-    this.damage_attr = '';
-    this.defense_attr = '';
-    this.healing_attr = '';
+    this.defence_attr = '';
+    this.effect_attr = '';
     this.training_cost_ep = 0;
     this.training_cost_gold = 0;
     this.url = '';
+    this.color = false;
     this.hero;
     this.onDone = null;
+}
+
+HeroSkill.prototype.roll = function() {
+    var res = { 'attack': '', 'defence' : '', 'effect' : '' },
+        re_tmp = /([a-z]{2}){1},([a-z]{2}){1}(\s*\(([+-][0-9]+)%?\))?/i;
+
+    return res;
+
+    if (this.attack_attr) {
+        var m = this.attack_attr.match(re_tmp),
+            attr1 = m[1],
+            attr2 = m[2],
+            mod = m[4] ? 1 + Number(m[4]) / 100 : 1;
+        res.attack = Math.floor(mod * (this.hero.attributes[attr1].effective_value * 2 + this.hero.attributes[attr2].effective_value + this.effective_rank * 2));
+    }
+
+    if (this.defence_attr) {
+        var m = this.defence_attr.match(re_tmp),
+            attr1 = m[1],
+            attr2 = m[2],
+            mod = m[4] ? 1 + Number(m[4]) / 100 : 1;
+        res.defence = Math.floor(mod * (this.hero.attributes[attr1].effective_value * 2 + this.hero.attributes[attr2].effective_value + this.effective_rank * 2));
+    }
+
+    if (this.effect_attr) {
+        var m = this.effect_attr.match(re_tmp),
+            attr1 = m[1],
+            attr2 = m[2],
+            mod = m[4] ? 1 + Number(m[4]) / 100 : 1;
+        res.effect = Math.floor(mod * (this.hero.attributes[attr1].effective_value / 2 + this.hero.attributes[attr2].effective_value / 3 + this.effective_rank / 2));
+    }
+
+    return res;
 }
 
 HeroSkill.prototype.fetchInfo = function(data) {
@@ -454,10 +517,10 @@ HeroSkill.prototype.fetchInfo = function(data) {
                 case 'skill class'              : this.skill_class = value; break;
                 case 'attack type'              : this.attack_type = value; break;
                 case 'attack'                   : this.attack_attr = value; break;
-                case 'damage'                   : this.damage_attr = value; break;
+                case 'damage'                   : this.effect_attr = value; break;
                 case 'initiative'               : this.initiative_attr = value; break;
-                case 'defense'                  : this.defense_attr = value; break;
-                case 'healing'                  : this.healing_attr = value; break;
+                case 'defense'                  : this.defence_attr = value; break;
+                case 'healing'                  : this.effect_attr = value; break;
                 default: break;
             }
         }
@@ -505,8 +568,8 @@ HeroSkill.prototype.parse = function(row_html) {
             if (!this.talent) {
                 switch(link.attr('class')) {
                     case 'skill_primary'  : this.primary     = true; break;
-                    case 'skill_secondary': this.secondary   = true; break;
-                    case 'skill_foreign'  : this.exceptional = true; break;
+                    case 'skill_secondary': this.secondary   = true; this.color = "lightslategray"; break;
+                    case 'skill_foreign'  : this.exceptional = true; this.color = "#858585"; break;
                     default: break;
                 }
             }
@@ -624,8 +687,6 @@ if (g_form_skills && g_form_skills.action && g_form_skills.action.match(/hero\/s
 
         g_img_wait = add('div').attr('id', 'profile_wait_img').add('img').attr({'src': location.protocol + '//' + location.host + '/wod/css/img/ajax-loader.gif', 'style': 'display: none'});
         button.parentNode.insertBefore(g_img_wait, button.parentNode.firstChild);
-
-        //TODO: parse subclass
     }
 }
 
