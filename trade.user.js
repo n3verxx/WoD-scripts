@@ -75,7 +75,7 @@ if (Element.prototype) {
     if (!Element.prototype.add)  Element.prototype.add = add;
 }
 else {
-    var elements = ['Div', 'Input', 'Table', 'TableRow', 'TableCell', 'Label', 'Span'];
+    var elements = ['Div', 'Input', 'Table', 'TableRow', 'TableCell', 'Label'];
     for (var i = 0, cnt = elements.length; i < cnt; i++) {
         var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
         if (!proto.attr) proto.attr = attr;
