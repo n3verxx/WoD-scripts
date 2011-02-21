@@ -12,11 +12,15 @@
 function $(selector, parentNode) {
     var context = parentNode || document;
     if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
-    var selectors = selector.split(' '),
-        result = [context];
+    var selectors = selector.split(/\s+/), result = [context];
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
-        var sel = selectors[i],
-            new_result = [];
+        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z]+\w*)/i), sel = m_elem ? m_elem[1] : '',
+            s = s.replace(sel, ''), re_attr = /(\[([a-z]+)([\*\^\$]?=)"(\w+)"\])/gi, filters = [];
+        while (filter = re_attr.exec(s)) {
+            if (filter.index === re_attr.lastIndex) re_attr.lastIndex++;
+            var f = { 'attribute': filter[2], 'condition': filter[3], 'value': filter[4] };
+            filters.push(f);
+        }
         switch(sel[0]) {
             case '#':
                 new_result = [document.getElementById(sel.substring(1))];
@@ -35,14 +39,32 @@ function $(selector, parentNode) {
                 };
                 break;
         }
-        if (new_result.length === 0) return null;
-        result = new_result;
+        if (filters.length > 0) {
+            result = [];
+            for (var g = 0, cntg = new_result.length; g < cntg; g++) {
+                var elem = new_result[g], ok = false;
+                for (var l = 0, cntl = filters.length; l < cntl; l++) {
+                    var f = filters[l], attrib = elem.getAttribute(f.attribute);
+                    if (attrib) {
+                        switch(f.condition) {
+                            case '*=': ok = attrib.indexOf(f.value) > -1;  break;
+                            case '^=': ok = attrib.indexOf(f.value) === 0; break;
+                            case '$=': ok = attrib.indexOf(f.value, attrib.length - f.value.length) > -1; break;
+                            default  : ok = attrib === f.value; break;
+                        }
+                    }
+                    if (!ok) break;
+                }
+                if (ok) result.push(elem);
+            }
+        }
+        else {
+            result = new_result;
+        }
     }
-    for (var i = 0, cnt = result.length; i < cnt; i++) {
-        if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject;
-    };
-    if (result.length > 1) return result;
-    return result.length === 1 && result[0] !== context ? result[0] : null;
+    if (result.length === 0 || result[0] === context) return null;
+    for (var i = 0, cnt = result.length; i < cnt; i++) { if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject; };
+    return result.length === 1 ? result[0] : result;
 }
 
 var attr = function(name, value, remove) {
@@ -70,12 +92,18 @@ var add = function(value) {
     return newElem;
 }
 
+var supportsInnerText = typeof Element.prototype !== 'undefined';
+var innerText = function(elem) {
+    if (!elem) return '';
+    return supportsInnerText ? elem.innerText : elem.textContent;
+}
+
 if (Element.prototype) {
     if (!Element.prototype.attr) Element.prototype.attr = attr;
     if (!Element.prototype.add) Element.prototype.add = add;
 }
 else {
-    var elements = ['Div', 'Input', 'TableRow', 'TableCell', 'Label'];
+    var elements = ['Div', 'Input', 'TableRow', 'TableCell', 'Label', 'Anchor', 'Option'];
     for (var i = 0, cnt = elements.length; i < cnt; i++) {
         var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
         if (!proto.attr) proto.attr = attr;
@@ -83,39 +111,248 @@ else {
     };
 }
 
-// --- Main ---
+// --- Classes ---
 
-var g_main = $('#main_content .layout_clear'),
-    g_clickable = $('th .clickable', g_main),
-    g_inputs = $('input', g_main) || [];
-
-if (g_clickable) {
-    var col_group = null;
-    for (var i = 0, cnt = g_clickable.length; i < cnt; i++) {
-        if (g_clickable[i].value.indexOf('Group') > -1) {
-            col_group = g_clickable[i].parentNode;
-            break;
-        }
-    }
-
-    if (col_group) {
-       var select = add('input').attr({'type': 'checkbox', 'id': 'gm_group_flag', 'name': 'gm_group_flag'}),
-           label = add('label').attr({'for': 'gm_group_flag'});
-
-       label.innerHTML = 'all';
-       select.addEventListener('click', function() {
-            for (var i = 0, cnt = g_inputs.length; i < cnt; i++) {
-                var inp = g_inputs[i];
-                if (inp.type === 'checkbox' && inp.name.indexOf('SetGrpItem') > -1) inp.checked = this.checked;
-            }
-       }, false);
-
-       col_group.removeChild(col_group.childNodes[4]);
-       col_group.appendChild(select);
-       col_group.appendChild(label);
-    }
+function StorageObject() {
+    this.name = '';
+    this.consumable = false;
+    this.usable = true;
+    this.group = true;
+    this.ctrlSelect = null;
+    this.ctrlLocation = null;
+    this.ctrlSell = null;
 }
 
+StorageObject.specialConsumables = {
+    'ruby shard': 1,
+    'small carnelian': 1,
+    'small citrine fragment': 1,
+    'small emerald fragment': 1,
+    'small lapis lazuli fragment': 1,
+    'small malachite fragment': 1,
+    'small turquoise': 1
+}
+
+StorageObject.prototype.isConsumable = function() {
+    if (this.consumable) return true;
+    if (/^reagent:/.test(this.name)) return true;
+    if (/^(lesser|greater) emblem of/i.test(this.name)) return true;
+    if (StorageObject.specialConsumables[this.name]) return true;
+    return false;
+}
+
+// --- Main ---
+
+var g_main = $('#main_content'),
+    buttons_commit = $('input[type="submit"][name="ok"][value^="Commit"]', g_main) || [];
+
+if (buttons_commit.length > 0) {
+    var scope = null;
+    if (!scope) scope = $('input[type="submit"][name^="ITEMS_LAGER_DO_SORT"]', g_main);
+    if (!scope) scope = $('input[type="submit"][name^="ITEMS_KELLER_DO_SORT"]', g_main);
+    if (!scope) scope = $('input[type="submit"][name^="ITEMS_GROUPCELLAR_DO_SORT"]', g_main);
+    try { scope = scope[0].parentNode.parentNode.parentNode.parentNode; } catch (ex) { scope = null; }
+    if (!scope) return;
+
+    var rows = $('.content_table_row_0', scope).concat($('.content_table_row_1', scope));
+    if (!rows) return;
+    if (rows.constructor != Array) rows = [rows];
+
+    var objects = [],
+        re_uses  = /\(([0-9]+)\/[0-9]+\)/;
+
+    for (var i = 0, cnt = rows.length; i < cnt; i++) {
+        var cells       = rows[i].cells,
+            link        = $('a', cells[1]),
+            tooltip     = link ? link.attr('onmouseover') : false,
+            classes     = link ? link.attr('class') : '',
+            ctrl_select = cells.length > 2 ? $('input[type="checkbox"][name^="doEquip]', cells[2]) : null,
+            ctrl_move   = cells.length > 2 ? $('select', cells[2]) : null,
+            ctrl_sell   = cells.length > 3 ? $('input[type="checkbox"][name^="Sell"]', cells[3]) : null,
+            ctrl_sell   = ctrl_sell === null ? (cells.length > 4 ? $('input[type="checkbox"]', cells[4]) : null) : ctrl_sell,
+            name        = innerText(link).replace(/!$/,''),
+            size        = innerText(cells[1]).replace(name, '').trim(),
+            obj         = new StorageObject();
+
+        obj.name = name;
+        obj.consumable = re_uses.test(size);
+        obj.usable = classes.indexOf('item_unusable') === -1;
+        obj.group = tooltip ? tooltip.indexOf('group item') > -1 : false;
+        obj.ctrlSelect = ctrl_select;
+        obj.ctrlLocation = ctrl_move;
+        obj.ctrlSell = ctrl_sell;
+
+        objects.push(obj);
+    }
+
+    if (objects.length === 0) return;
+
+    var labelMove = add('span'),
+        labelSell = add('span'),
+        buttonSplit = add('input'),
+        sep = add('span'),
+        selectMove = add('select'),
+        selectSell = add('select'),
+        op;
+
+    labelMove.innerHTML = '&nbsp;Select:&nbsp;';
+    labelSell.innerHTML = '&nbsp;Sell:&nbsp;';
+    buttonSplit.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonSplit', 'value': 'Split', 'style': 'margin-left: 5px'});
+
+    var moveOptions = ['no', '',
+                       'none', 'none',
+                       'all', 'all',
+                       'all_nouse', 'all (unusable)',
+                       'con', 'consumables',
+                       'con_nouse', 'consumables (unusable)',
+                       'itm', 'items',
+                       'itm_nouse', 'items (unusable)',
+                       'itm_group', 'items (group)',
+                       'itm_nongroup', 'items (non-group)'];
+
+    var sellOptions = ['no', '',
+                       'none', 'none',
+                       'all', 'all',
+                       'all_nouse', 'all (unusable)',
+                       'con', 'consumables',
+                       'con_nouse', 'consumables (unusable)',
+                       'itm', 'items',
+                       'itm_nouse', 'items (unusable)'];
+
+    for (var i = 0, cnt = moveOptions.length; i < cnt; i = i + 2) {
+        op = add('option');
+        op.attr('value', moveOptions[i]).innerHTML = moveOptions[i + 1];
+        selectMove.appendChild(op);
+    }
+
+    for (var i = 0, cnt = sellOptions.length; i < cnt; i = i + 2) {
+        op = add('option');
+        op.attr('value', sellOptions[i]).innerHTML = sellOptions[i + 1];
+        selectSell.appendChild(op);
+    }
+
+    selectMove.addEventListener('change', function() {
+        switch(selectMove.value)
+        {
+            case 'none':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    if (objects[i].ctrlSelect) objects[i].ctrlSelect.checked = false;
+                }
+                break;
+            case 'all':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    if (objects[i].ctrlSelect) objects[i].ctrlSelect.checked = true;
+                }
+                break;
+            case 'all_nouse':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && !obj.usable) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'con':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && obj.isConsumable()) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'con_nouse':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && obj.isConsumable() && !obj.usable) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'itm':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && !obj.isConsumable()) obj.ctrlSelect.checked  = true;
+                }
+                break;
+            case 'itm_nouse':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && !obj.usable && !obj.isConsumable()) obj.ctrlSelect.checked = true;
+                }
+                break;
+        }
+    }, false);
+
+    selectSell.addEventListener('change', function() {
+        switch(selectSell.value)
+        {
+            case 'none':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    if (objects[i].ctrlSell) objects[i].ctrlSell.checked = false;
+                }
+                break;
+            case 'all':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    if (objects[i].ctrlSell) objects[i].ctrlSell.checked = true;
+                }
+                break;
+            case 'all_nouse':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && !obj.usable) obj.ctrlSell.checked = true;
+                }
+                break;
+            case 'con':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && obj.isConsumable()) obj.ctrlSell.checked = true;
+                }
+                break;
+            case 'con_nouse':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && obj.isConsumable() && !obj.usable) obj.ctrlSell.checked = true;
+                }
+                break;
+            case 'itm':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && !obj.isConsumable()) obj.ctrlSell.checked  = true;
+                }
+                break;
+            case 'itm_nouse':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && !obj.usable && !obj.isConsumable()) obj.ctrlSell.checked = true;
+                }
+                break;
+            case 'itm_group':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && obj.group && !obj.isConsumable()) obj.ctrlSell.checked = true;
+                }
+                break;
+            case 'itm_nongroup':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSell && !obj.group && !obj.isConsumable()) obj.ctrlSell.checked = true;
+                }
+                break;
+        }
+    }, false);
+
+    buttonSplit.addEventListener('click', function() {
+        for (var i = 0, cnt = objects.length; i < cnt; i++) {
+            var obj = objects[i];
+            if (obj.ctrlLocation && obj.ctrlSelect && obj.ctrlSelect.checked) {
+                obj.ctrlLocation.value = !obj.isConsumable() ? 'go_group' : 'go_group_2';
+            }
+        }
+    }, false);
+
+    var holder = buttons_commit[0].parentNode;
+    holder.insertBefore(labelMove, buttons_commit[0].nextSibling);
+    holder.insertBefore(selectMove, labelMove.nextSibling);
+    holder.insertBefore(buttonSplit, selectMove.nextSibling);
+    holder.insertBefore(labelSell, buttonSplit.nextSibling);
+    holder.insertBefore(selectSell, labelSell.nextSibling);
+}
 
 })();
+
+
 
