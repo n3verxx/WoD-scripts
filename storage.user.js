@@ -274,6 +274,18 @@ if (buttons_commit.length > 0) {
                     if (obj.ctrlSelect && !obj.usable && !obj.isConsumable()) obj.ctrlSelect.checked = true;
                 }
                 break;
+            case 'itm_group':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && obj.group && !obj.isConsumable()) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'itm_nongroup':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && !obj.group && !obj.isConsumable()) obj.ctrlSelect.checked = true;
+                }
+                break;
         }
     }, false);
 
@@ -318,18 +330,6 @@ if (buttons_commit.length > 0) {
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
                     var obj = objects[i];
                     if (obj.ctrlSell && !obj.usable && !obj.isConsumable()) obj.ctrlSell.checked = true;
-                }
-                break;
-            case 'itm_group':
-                for (var i = 0, cnt = objects.length; i < cnt; i++) {
-                    var obj = objects[i];
-                    if (obj.ctrlSell && obj.group && !obj.isConsumable()) obj.ctrlSell.checked = true;
-                }
-                break;
-            case 'itm_nongroup':
-                for (var i = 0, cnt = objects.length; i < cnt; i++) {
-                    var obj = objects[i];
-                    if (obj.ctrlSell && !obj.group && !obj.isConsumable()) obj.ctrlSell.checked = true;
                 }
                 break;
         }
