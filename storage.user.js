@@ -9,10 +9,10 @@
 
 // --- Helpers ---
 
-function $(selector, parentNode) {
+function $(selector, parentNode, alwaysArray) {
     var context = parentNode || document;
     if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
-    var selectors = selector.split(/\s+/), result = [context];
+    var selectors = selector.split(/\s+/), result = [context], asArray = alwaysArray || false;
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
         var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z]+\w*)/i), sel = m_elem ? m_elem[1] : '',
             s = s.replace(sel, ''), re_attr = /(\[([a-z]+)([\*\^\$]?=)"(\w+)"\])/gi, filters = [];
@@ -64,7 +64,7 @@ function $(selector, parentNode) {
     }
     if (result.length === 0 || result[0] === context) return null;
     for (var i = 0, cnt = result.length; i < cnt; i++) { if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject; };
-    return result.length === 1 ? result[0] : result;
+    return !asArray && result.length === 1 ? result[0] : result;
 }
 
 var attr = function(name, value, remove) {
@@ -154,9 +154,9 @@ if (buttons_commit.length > 0) {
     try { scope = scope[0].parentNode.parentNode.parentNode.parentNode; } catch (ex) { scope = null; }
     if (!scope) return;
 
-    var rows = $('.content_table_row_0', scope).concat($('.content_table_row_1', scope));
+    var rows = $('.content_table_row_0', scope, true),
+        rows = rows ? rows.concat($('.content_table_row_1', scope, true)) : null;
     if (!rows) return;
-    if (rows.constructor != Array) rows = [rows];
 
     var objects = [],
         re_uses  = /\(([0-9]+)\/[0-9]+\)/;
@@ -190,49 +190,56 @@ if (buttons_commit.length > 0) {
     var labelMove = add('span'),
         labelSell = add('span'),
         buttonSplit = add('input'),
-        sep = add('span'),
+        buttonEquip = add('input'),
         selectMove = add('select'),
-        selectSell = add('select'),
-        op;
+        selectSell = add('select');
 
     labelMove.innerHTML = '&nbsp;Select:&nbsp;';
     labelSell.innerHTML = '&nbsp;Sell:&nbsp;';
     buttonSplit.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonSplit', 'value': 'Split', 'style': 'margin-left: 5px'});
+    buttonEquip.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonEquip', 'value': 'Equip', 'style': 'margin-left: 5px'});
 
     var moveOptions = ['no', '',
                        'none', 'none',
                        'all', 'all',
                        'all_nouse', 'all (unusable)',
+                       'all_group', 'all (group)',
+                       'all_nongroup', 'all (non-group)',
+                       'sep1', '-',
                        'con', 'consumables',
                        'con_nouse', 'consumables (unusable)',
+                       'con_group', 'consumables (group)',
+                       'con_nongroup', 'consumables (non-group)',
+                       'sep2', '-',
                        'itm', 'items',
                        'itm_nouse', 'items (unusable)',
                        'itm_group', 'items (group)',
-                       'itm_nongroup', 'items (non-group)'];
-
-    var sellOptions = ['no', '',
+                       'itm_nongroup', 'items (non-group)'],
+        sellOptions = ['no', '',
                        'none', 'none',
                        'all', 'all',
                        'all_nouse', 'all (unusable)',
+                       'sep1', '-',
                        'con', 'consumables',
                        'con_nouse', 'consumables (unusable)',
+                       'sep2', '-',
                        'itm', 'items',
                        'itm_nouse', 'items (unusable)'];
 
     for (var i = 0, cnt = moveOptions.length; i < cnt; i = i + 2) {
-        op = add('option');
+        var op = add('option');
         op.attr('value', moveOptions[i]).innerHTML = moveOptions[i + 1];
         selectMove.appendChild(op);
     }
 
     for (var i = 0, cnt = sellOptions.length; i < cnt; i = i + 2) {
-        op = add('option');
+        var op = add('option');
         op.attr('value', sellOptions[i]).innerHTML = sellOptions[i + 1];
         selectSell.appendChild(op);
     }
 
-    selectMove.addEventListener('change', function() {
-        switch(selectMove.value)
+    var onSelectionChange = function(eventArgs) {
+        switch(eventArgs.target.value)
         {
             case 'none':
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
@@ -250,6 +257,18 @@ if (buttons_commit.length > 0) {
                     if (obj.ctrlSelect && !obj.usable) obj.ctrlSelect.checked = true;
                 }
                 break;
+            case 'all_group':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && obj.group) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'all_nongroup':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && !obj.group) obj.ctrlSelect.checked = true;
+                }
+                break;
             case 'con':
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
                     var obj = objects[i];
@@ -260,6 +279,18 @@ if (buttons_commit.length > 0) {
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
                     var obj = objects[i];
                     if (obj.ctrlSelect && obj.isConsumable() && !obj.usable) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'con_group':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && obj.isConsumable() && obj.group) obj.ctrlSelect.checked = true;
+                }
+                break;
+            case 'con_nongroup':
+                for (var i = 0, cnt = objects.length; i < cnt; i++) {
+                    var obj = objects[i];
+                    if (obj.ctrlSelect && obj.isConsumable() && !obj.group) obj.ctrlSelect.checked = true;
                 }
                 break;
             case 'itm':
@@ -287,10 +318,10 @@ if (buttons_commit.length > 0) {
                 }
                 break;
         }
-    }, false);
+    }
 
-    selectSell.addEventListener('change', function() {
-        switch(selectSell.value)
+   var onSellChange = function(eventArgs) {
+        switch(eventArgs.target.value)
         {
             case 'none':
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
@@ -333,24 +364,83 @@ if (buttons_commit.length > 0) {
                 }
                 break;
         }
-    }, false);
+    }
 
-    buttonSplit.addEventListener('click', function() {
+    var onSplit = function() {
+        var ok = false, tmp = [];
         for (var i = 0, cnt = objects.length; i < cnt; i++) {
             var obj = objects[i];
-            if (obj.ctrlLocation && obj.ctrlSelect && obj.ctrlSelect.checked) {
-                obj.ctrlLocation.value = !obj.isConsumable() ? 'go_group' : 'go_group_2';
+            if (obj.ctrlLocation && obj.ctrlSelect) {
+                if (obj.ctrlSelect.checked) {
+                    obj.ctrlLocation.value = !obj.isConsumable() ? 'go_group' : 'go_group_2';
+                    ok = true;
+                }
+                else {
+                    tmp.push(obj);
+                }
             }
         }
-    }, false);
+        if (!ok) {
+            for (var i = 0, cnt = tmp.length; i < cnt; i++) {
+                var obj = tmp[i];
+                    obj.ctrlLocation.value = !obj.isConsumable() ? 'go_group' : 'go_group_2';
+            }
+        }
+    }
 
-    var holder = buttons_commit[0].parentNode;
+    var onEquip = function() {
+        var ok = false, tmp = [];
+        for (var i = 0, cnt = objects.length; i < cnt; i++) {
+            var obj = objects[i];
+            if (obj.usable && obj.ctrlLocation && obj.ctrlSelect) {
+                if (obj.ctrlSelect.checked) {
+                    obj.ctrlLocation.value = obj.ctrlLocation.options[0].value;
+                    ok = true;
+                }
+                else {
+                    tmp.push(obj);
+                }
+            }
+        }
+        if (!ok) {
+            for (var i = 0, cnt = tmp.length; i < cnt; i++) {
+                var obj = tmp[i];
+                    obj.ctrlLocation.value = obj.ctrlLocation.options[0].value;
+            }
+        }
+    }
+
+    var holder = buttons_commit[0].parentNode,
+        buttonSplit2 = buttonSplit.cloneNode(true),
+        buttonEquip2 = buttonEquip.cloneNode(true),
+        labelSell2   = labelSell.cloneNode(true),
+        labelMove2   = labelMove.cloneNode(true),
+        selectSell2  = selectSell.cloneNode(true),
+        selectMove2  = selectMove.cloneNode(true);
+
+    selectMove.addEventListener('change', onSelectionChange, false);
+    selectMove2.addEventListener('change', onSelectionChange, false);
+    selectSell.addEventListener('change', onSellChange, false);
+    selectSell2.addEventListener('change', onSellChange, false);
+    buttonSplit.addEventListener('click', onSplit, false);
+    buttonSplit2.addEventListener('click', onSplit, false);
+    buttonEquip.addEventListener('click', onEquip, false);
+    buttonEquip2.addEventListener('click', onEquip, false);
+
     holder.insertBefore(labelMove, buttons_commit[0].nextSibling);
     holder.insertBefore(selectMove, labelMove.nextSibling);
     holder.insertBefore(buttonSplit, selectMove.nextSibling);
-    holder.insertBefore(labelSell, buttonSplit.nextSibling);
+    holder.insertBefore(buttonEquip, buttonSplit.nextSibling);
+    holder.insertBefore(labelSell, buttonEquip.nextSibling);
     holder.insertBefore(selectSell, labelSell.nextSibling);
-}
+
+    holder = buttons_commit[1].parentNode;
+    holder.insertBefore(labelMove2, buttons_commit[1].nextSibling);
+    holder.insertBefore(selectMove2, labelMove2.nextSibling);
+    holder.insertBefore(buttonSplit2, selectMove2.nextSibling);
+    holder.insertBefore(buttonEquip2, buttonSplit2.nextSibling);
+    holder.insertBefore(labelSell2, buttonEquip2.nextSibling);
+    holder.insertBefore(selectSell2, labelSell2.nextSibling);}
 
 })();
 
