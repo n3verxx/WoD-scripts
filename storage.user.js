@@ -103,7 +103,7 @@ if (Element.prototype) {
     if (!Element.prototype.add) Element.prototype.add = add;
 }
 else {
-    var elements = ['Div', 'Input', 'TableRow', 'TableCell', 'Label', 'Anchor', 'Option'];
+    var elements = ['Div', 'Input', 'TableRow', 'TableCell', 'Label', 'Anchor', 'Option', 'OptGroup'];
     for (var i = 0, cnt = elements.length; i < cnt; i++) {
         var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
         if (!proto.attr) proto.attr = attr;
@@ -201,41 +201,54 @@ if (buttons_commit.length > 0) {
 
     var moveOptions = ['no', '',
                        'none', 'none',
+                       '---', 'All',
                        'all', 'all',
-                       'all_nouse', 'all (unusable)',
-                       'all_group', 'all (group)',
-                       'all_nongroup', 'all (non-group)',
-                       'sep1', '-',
-                       'con', 'consumables',
-                       'con_nouse', 'consumables (unusable)',
-                       'con_group', 'consumables (group)',
-                       'con_nongroup', 'consumables (non-group)',
-                       'sep2', '-',
-                       'itm', 'items',
-                       'itm_nouse', 'items (unusable)',
-                       'itm_group', 'items (group)',
-                       'itm_nongroup', 'items (non-group)'],
+                       'all_nouse', 'unusable',
+                       'all_group', 'group',
+                       'all_nongroup', 'non-group',
+                       '---', 'Consumables',
+                       'con', 'all',
+                       'con_nouse', 'unusable',
+                       'con_group', 'group',
+                       'con_nongroup', 'non-group',
+                       '---', 'Items',
+                       'itm', 'all',
+                       'itm_nouse', 'unusable',
+                       'itm_group', 'group',
+                       'itm_nongroup', 'non-group'],
         sellOptions = ['no', '',
                        'none', 'none',
+                       '---', 'All',
                        'all', 'all',
-                       'all_nouse', 'all (unusable)',
-                       'sep1', '-',
-                       'con', 'consumables',
-                       'con_nouse', 'consumables (unusable)',
-                       'sep2', '-',
-                       'itm', 'items',
-                       'itm_nouse', 'items (unusable)'];
+                       'all_nouse', 'unusable',
+                       '---', 'Consumables',
+                       'con', 'all',
+                       'con_nouse', 'unusable',
+                       '---', 'Items',
+                       'itm', 'all',
+                       'itm_nouse', 'unusable'],
+        op_group = null;
 
     for (var i = 0, cnt = moveOptions.length; i < cnt; i = i + 2) {
+        if (moveOptions[i] === '---') { 
+            op_group = add('optgroup').attr('label', moveOptions[i + 1]); 
+            selectMove.appendChild(op_group); continue;
+        }
         var op = add('option');
         op.attr('value', moveOptions[i]).innerHTML = moveOptions[i + 1];
-        selectMove.appendChild(op);
+        if (op_group) op_group.appendChild(op); else selectMove.appendChild(op);
     }
 
+    op_group = null;
+
     for (var i = 0, cnt = sellOptions.length; i < cnt; i = i + 2) {
+        if (sellOptions[i] === '---') { 
+            op_group = add('optgroup').attr('label', sellOptions[i + 1]); 
+            selectSell.appendChild(op_group); continue;
+        }
         var op = add('option');
         op.attr('value', sellOptions[i]).innerHTML = sellOptions[i + 1];
-        selectSell.appendChild(op);
+        if (op_group) op_group.appendChild(op); else selectSell.appendChild(op);
     }
 
     var onSelectionChange = function(eventArgs) {
