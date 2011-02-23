@@ -199,8 +199,7 @@ if (buttons_commit.length > 0) {
     buttonSplit.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonSplit', 'value': 'Split', 'style': 'margin-left: 5px'});
     buttonEquip.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonEquip', 'value': 'Equip', 'style': 'margin-left: 5px'});
 
-    var moveOptions = ['no', '',
-                       'none', 'none',
+    var moveOptions = ['none', 'none',
                        '---', 'All',
                        'all', 'all',
                        'all_nouse', 'unusable',
@@ -216,8 +215,7 @@ if (buttons_commit.length > 0) {
                        'itm_nouse', 'unusable',
                        'itm_group', 'group',
                        'itm_nongroup', 'non-group'],
-        sellOptions = ['no', '',
-                       'none', 'none',
+        sellOptions = ['none', 'none',
                        '---', 'All',
                        'all', 'all',
                        'all_nouse', 'unusable',
