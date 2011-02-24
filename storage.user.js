@@ -250,8 +250,7 @@ if (buttons_commit.length > 0) {
     }
 
     var onSelectionChange = function(eventArgs) {
-        switch(eventArgs.target.value)
-        {
+        switch(eventArgs.target.value) {
             case 'none':
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
                     if (objects[i].ctrlSelect) objects[i].ctrlSelect.checked = false;
@@ -332,8 +331,7 @@ if (buttons_commit.length > 0) {
     }
 
    var onSellChange = function(eventArgs) {
-        switch(eventArgs.target.value)
-        {
+        switch(eventArgs.target.value) {
             case 'none':
                 for (var i = 0, cnt = objects.length; i < cnt; i++) {
                     if (objects[i].ctrlSell) objects[i].ctrlSell.checked = false;
@@ -377,13 +375,25 @@ if (buttons_commit.length > 0) {
         }
     }
 
+    var go_gs = 'go_group_2',
+        go_tv = 'go_group';
+
+    if (objects.length > 0 && objects[0].ctrlLocation) {
+        var ops = objects[0].ctrlLocation.options;
+        for (var i = 0, cnt = ops.length; i < cnt; i++) {
+            var op = ops[i].value;
+            if (op === '-go_group_2') { go_gs = '-go_group_2'; break; }
+            if (op === '-go_group')   { go_tv = '-go_group'; break; }
+        }
+    }
+
     var onSplit = function() {
         var ok = false, tmp = [];
         for (var i = 0, cnt = objects.length; i < cnt; i++) {
             var obj = objects[i];
             if (obj.ctrlLocation && obj.ctrlSelect) {
                 if (obj.ctrlSelect.checked) {
-                    obj.ctrlLocation.value = !obj.isConsumable() ? 'go_group' : 'go_group_2';
+                    obj.ctrlLocation.value = !obj.isConsumable() ? go_tv : go_gs;
                     ok = true;
                 }
                 else {
@@ -394,7 +404,7 @@ if (buttons_commit.length > 0) {
         if (!ok) {
             for (var i = 0, cnt = tmp.length; i < cnt; i++) {
                 var obj = tmp[i];
-                    obj.ctrlLocation.value = !obj.isConsumable() ? 'go_group' : 'go_group_2';
+                    obj.ctrlLocation.value = !obj.isConsumable() ? go_tv : go_gs;
             }
         }
     }
