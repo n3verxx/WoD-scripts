@@ -67,28 +67,28 @@ function $(selector, parentNode, alwaysArray) {
     return !asArray && result.length === 1 ? result[0] : result;
 }
 
-var attr = function(name, value, remove) {
+var attr = function(elem, name, value, remove) {
     if (remove) {
-        this.removeAttribute(name);
+        elem.removeAttribute(name);
     }
     else if (typeof name === 'object') {
         for (var key in name) {
-            this.setAttribute(key, name[key]);
+            elem.setAttribute(key, name[key]);
         };
     }
     else if (value) {
-        this.setAttribute(name, value);
+        elem.setAttribute(name, value);
     }
     else {
-        return this.getAttribute(name);
+        return elem.getAttribute(name);
     }
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
+    return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
 }
 
-var add = function(value) {
+var add = function(value, parentNode) {
     var newElem = typeof value !== 'object' ? document.createElement(value) : value;
     if (newElem.wrappedJSObject) newElem = newElem.wrappedJSObject;
-    if (this.nodeType) this.appendChild(newElem);
+    if (parentNode && parentNode.nodeType) parentNode.appendChild(newElem);
     return newElem;
 }
 
@@ -96,19 +96,6 @@ var supportsInnerText = typeof Element.prototype !== 'undefined';
 var innerText = function(elem) {
     if (!elem) return '';
     return supportsInnerText ? elem.innerText : elem.textContent;
-}
-
-if (Element.prototype) {
-    if (!Element.prototype.attr) Element.prototype.attr = attr;
-    if (!Element.prototype.add) Element.prototype.add = add;
-}
-else {
-    var elements = ['Div', 'Input', 'TableRow', 'TableCell', 'Label', 'Anchor', 'Option', 'OptGroup'];
-    for (var i = 0, cnt = elements.length; i < cnt; i++) {
-        var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
-        if (!proto.attr) proto.attr = attr;
-        if (!proto.add) proto.add = add;
-    };
 }
 
 // --- Classes ---
@@ -164,8 +151,8 @@ if (buttons_commit.length > 0) {
     for (var i = 0, cnt = rows.length; i < cnt; i++) {
         var cells       = rows[i].cells,
             link        = $('a', cells[1]),
-            tooltip     = link ? link.attr('onmouseover') : false,
-            classes     = link ? link.attr('class') : '',
+            tooltip     = link ? attr(link, 'onmouseover') : false,
+            classes     = link ? attr(link, 'class') : '',
             ctrl_select = cells.length > 2 ? $('input[type="checkbox"][name^="doEquip]', cells[2]) : null,
             ctrl_move   = cells.length > 2 ? $('select', cells[2]) : null,
             ctrl_sell   = cells.length > 3 ? $('input[type="checkbox"][name^="Sell"]', cells[3]) : null,
@@ -196,8 +183,8 @@ if (buttons_commit.length > 0) {
 
     labelMove.innerHTML = '&nbsp;Select:&nbsp;';
     labelSell.innerHTML = '&nbsp;Sell:&nbsp;';
-    buttonSplit.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonSplit', 'value': 'Split', 'style': 'margin-left: 5px'});
-    buttonEquip.attr({'type': 'button', 'class': 'button clickable', 'name': 'buttonEquip', 'value': 'Equip', 'style': 'margin-left: 5px'});
+    attr(buttonSplit, {'type': 'button', 'class': 'button clickable', 'name': 'buttonSplit', 'value': 'Split', 'style': 'margin-left: 5px'});
+    attr(buttonEquip, {'type': 'button', 'class': 'button clickable', 'name': 'buttonEquip', 'value': 'Equip', 'style': 'margin-left: 5px'});
 
     var moveOptions = ['none', 'none',
                        '---', 'All',
@@ -229,11 +216,12 @@ if (buttons_commit.length > 0) {
 
     for (var i = 0, cnt = moveOptions.length; i < cnt; i = i + 2) {
         if (moveOptions[i] === '---') { 
-            op_group = add('optgroup').attr('label', moveOptions[i + 1]); 
+            op_group = add('optgroup');
+            attr(op_group, 'label', moveOptions[i + 1]); 
             selectMove.appendChild(op_group); continue;
         }
         var op = add('option');
-        op.attr('value', moveOptions[i]).innerHTML = moveOptions[i + 1];
+        attr(op, 'value', moveOptions[i]).innerHTML = moveOptions[i + 1];
         if (op_group) op_group.appendChild(op); else selectMove.appendChild(op);
     }
 
@@ -241,11 +229,12 @@ if (buttons_commit.length > 0) {
 
     for (var i = 0, cnt = sellOptions.length; i < cnt; i = i + 2) {
         if (sellOptions[i] === '---') { 
-            op_group = add('optgroup').attr('label', sellOptions[i + 1]); 
+            op_group = add('optgroup');
+            attr(op_group, 'label', sellOptions[i + 1]); 
             selectSell.appendChild(op_group); continue;
         }
         var op = add('option');
-        op.attr('value', sellOptions[i]).innerHTML = sellOptions[i + 1];
+        attr(op, 'value', sellOptions[i]).innerHTML = sellOptions[i + 1];
         if (op_group) op_group.appendChild(op); else selectSell.appendChild(op);
     }
 

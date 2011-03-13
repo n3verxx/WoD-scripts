@@ -8,7 +8,7 @@
 
 (function() {
 
-var VERSION = '1.0.3';
+var VERSION = '1.0.4';
 
 /***
  * TODO:
@@ -17,18 +17,27 @@ var VERSION = '1.0.3';
  *   - parse equipment
  *   - parse subclass
  *   - parse talents
+ *
+ *   bonuses:
+ *   -attack / -defence / -effect
+ *   -for skill / no skill
+ *   bonuses[no-skill]  *
  */
 
 // --- Helpers ---
 
-function $(selector, parentNode) {
+function $(selector, parentNode, alwaysArray) {
     var context = parentNode || document;
     if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
-    var selectors = selector.split(' '),
-        result = [context];
+    var selectors = selector.split(/\s+/), result = [context], asArray = alwaysArray || false;
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
-        var sel = selectors[i],
-            new_result = [];
+        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z]+\w*)/i), sel = m_elem ? m_elem[1] : '',
+            s = s.replace(sel, ''), re_attr = /(\[([a-z]+)([\*\^\$]?=)"(\w+)"\])/gi, filters = [];
+        while (filter = re_attr.exec(s)) {
+            if (filter.index === re_attr.lastIndex) re_attr.lastIndex++;
+            var f = { 'attribute': filter[2], 'condition': filter[3], 'value': filter[4] };
+            filters.push(f);
+        }
         switch(sel[0]) {
             case '#':
                 new_result = [document.getElementById(sel.substring(1))];
@@ -47,62 +56,64 @@ function $(selector, parentNode) {
                 };
                 break;
         }
-        if (new_result.length === 0) return null;
-        result = new_result;
+        if (filters.length > 0) {
+            result = [];
+            for (var g = 0, cntg = new_result.length; g < cntg; g++) {
+                var elem = new_result[g], ok = false;
+                for (var l = 0, cntl = filters.length; l < cntl; l++) {
+                    var f = filters[l], attrib = elem.getAttribute(f.attribute);
+                    if (attrib) {
+                        switch(f.condition) {
+                            case '*=': ok = attrib.indexOf(f.value) > -1;  break;
+                            case '^=': ok = attrib.indexOf(f.value) === 0; break;
+                            case '$=': ok = attrib.indexOf(f.value, attrib.length - f.value.length) > -1; break;
+                            default  : ok = attrib === f.value; break;
+                        }
+                    }
+                    if (!ok) break;
+                }
+                if (ok) result.push(elem);
+            }
+        }
+        else {
+            result = new_result;
+        }
     }
-    for (var i = 0, cnt = result.length; i < cnt; i++) {
-        if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject;
-    };
-    if (result.length > 1) return result;
-    return result.length === 1 && result[0] !== context ? result[0] : null;
+    if (result.length === 0 || result[0] === context) return null;
+    for (var i = 0, cnt = result.length; i < cnt; i++) { if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject; };
+    return !asArray && result.length === 1 ? result[0] : result;
 }
 
-var attr = function(name, value, remove) {
+var attr = function(elem, name, value, remove) {
     if (remove) {
-        this.removeAttribute(name);
+        elem.removeAttribute(name);
     }
     else if (typeof name === 'object') {
         for (var key in name) {
-            this.setAttribute(key, name[key]);
+            elem.setAttribute(key, name[key]);
         };
     }
     else if (value) {
-        this.setAttribute(name, value);
+        elem.setAttribute(name, value);
     }
     else {
-        return this.getAttribute(name);
+        return elem.getAttribute(name);
     }
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
+    return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
 }
 
-var css = function(name, value) {
-    var estyle = document.defaultView.getComputedStyle(this, null);
-    if (typeof name === 'object') {
-        for (var key in name) {
-            estyle.setProperty(key, name[key]);
-        };
-    }
-    else if (value) {
-        estyle.setProperty(name, value, '');
-    }
-    else {
-        return estyle.getPropertyValue(name);
-    }
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
-}
-
-var cssClass = function(name, toggle) {
-    var has = this.className.indexOf(name) !== -1;
+var cssClass = function(elem, name, toggle) {
+    var has = elem.className.indexOf(name) !== -1;
     if (typeof toggle !== 'boolean') return has;
-    if (has && toggle) return this.wrappedJSObject ? this.wrappedJSObject : this;
-    this.className = toggle ? this.className + ' ' + name : this.className.replace(name,'').replace(/^\s+|\s+$/g,'');
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
+    if (has && toggle) return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
+    elem.className = toggle ? elem.className + ' ' + name : elem.className.replace(name,'').replace(/^\s+|\s+$/g,'');
+    return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
 }
 
-var add = function(value) {
+var add = function(value, parentNode) {
     var newElem = typeof value !== 'object' ? document.createElement(value) : value;
     if (newElem.wrappedJSObject) newElem = newElem.wrappedJSObject;
-    if (this.nodeType) this.appendChild(newElem);
+    if (parentNode && parentNode.nodeType) parentNode.appendChild(newElem);
     return newElem;
 }
 
@@ -147,23 +158,6 @@ var parseTemplate = function(tpl, data) {
         GM_log(ex);
     }
     return 'ERROR';
-}
-
-if (Element.prototype) {
-    if (!Element.prototype.attr) Element.prototype.attr = attr;
-    if (!Element.prototype.css)  Element.prototype.css = css;
-    if (!Element.prototype.cssClass) Element.prototype.cssClass = cssClass;
-    if (!Element.prototype.add) Element.prototype.add = add;
-}
-else {
-    var elements = ['Body', 'Anchor', 'Div', 'Image', 'Span', 'Heading', 'Input', 'TableRow', 'TableCell', 'TextArea'];
-    for (var i = 0, cnt = elements.length; i < cnt; i++) {
-        var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
-        if (!proto.attr) proto.attr = attr;
-        if (!proto.css) proto.css = css;
-        if (!proto.cssClass) proto.cssClass = cssClass;
-        if (!proto.add) proto.add = add;
-    };
 }
 
 String.prototype.trim = function() {
@@ -268,7 +262,7 @@ Hero.getProfileTemplate = function() {
 [h1]Armor[/h1]\
 [table border=1]\
 [tr][th][size=12]Damage type[/size][/th][th][size=12]Attack type[/size][/th][th][size=12]Armor (r)[/size][/th][/tr]\
-<# var armor = hero.armor; for (var dmg_type in armor) { var arm = armor[dmg_type]; for (var atk_type in arm) { var val = arm[atk_type].split("/"); #>\
+<# var armor = hero.armor; for (var dmg_type in armor) { var arm = armor[dmg_type]; for (var atk_type in arm) { var val = arm[atk_type].split("/"); if (val[0] == val[1] && val[1] == val[2] && val[2] == 0) continue; #>\
 [tr][td][size=12]<#=dmg_type#>[/size][/td][td align=center][size=12]<#=atk_type#>[/size][/td]\
 [td][size=12]<#if(val[0]>0){#>[color=mediumseagreen]<#}#><#=val[0]#><#if(val[0]>0){#>[/color]<#}#>\
  / <#if(val[1]>0){#>[color=mediumseagreen]<#}#><#=val[1]#><#if(val[1]>0){#>[/color]<#}#>\
@@ -566,7 +560,7 @@ HeroSkill.prototype.parse = function(row_html) {
             this.url = link.href;
 
             if (!this.talent) {
-                switch(link.attr('class')) {
+                switch(attr(link, 'class')) {
                     case 'skill_primary'  : this.primary     = true; break;
                     case 'skill_secondary': this.secondary   = true; this.color = "lightslategray"; break;
                     case 'skill_foreign'  : this.exceptional = true; this.color = "#858585"; break;
@@ -627,8 +621,10 @@ var g_form_skills = $('#main_content form'),
 
 var exportSkills = function() {
 
-    g_button_export.attr('disabled', 'true').cssClass('button clickable', false).cssClass('button_disabled', true);
-    g_img_wait.attr('style', null, true);
+    attr(g_button_export, 'disabled', 'true');
+    cssClass(g_button_export, 'button clickable', false);
+    cssClass(g_button_export, 'button_disabled', true);
+    attr(g_img_wait, 'style', null, true);
 
     get(location.href.replace('skills.php', 'attributes.php'), function(attrHtml) {
         var skill_rows = $('.content_table_row_0', g_form_skills).concat($('.content_table_row_1', g_form_skills)),
@@ -669,9 +665,10 @@ var showResult = function(skill) {
             url = '[url=https://github.com/n3ver/WoD-scripts/raw/master/profile_export.user.js]Profile Export[/url]',
             bbcode = g_hero.generateBBCode().trim() + '\n[size=9]\nGenerated: ' + stamp + ' - ' + url + ' ' + VERSION + '[/size]';
 
-        if (!txt_export) txt_export = h1.parentNode.add('textarea').attr({'rows': '4', 'cols': '50', 'id': 'profile-export-result'});
+        if (!txt_export) txt_export = add('textarea', h1.parentNode);
+        attr(txt_export, {'rows': '4', 'cols': '50', 'id': 'profile-export-result'});
         txt_export.innerHTML = bbcode;
-        g_img_wait.attr('style', 'display: none');
+        attr(g_img_wait, 'style', 'display: none');
     }
 }
 
@@ -680,12 +677,13 @@ if (g_form_skills && g_form_skills.action && g_form_skills.action.match(/hero\/s
         button = buttons[buttons.length - 1];
 
     if (button.value === 'Show Details') {
-        g_button_export = add('input').attr({'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 4px'});
+        g_button_export = add('input');
+        attr(g_button_export, {'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 4px'});
         g_button_export.addEventListener('click', exportSkills, false);
         button.parentNode.insertBefore(g_button_export, button.nextSibling);
         button.parentNode.insertBefore(add('br'), g_button_export.nextSibling);
 
-        g_img_wait = add('div').attr('id', 'profile_wait_img').add('img').attr({'src': location.protocol + '//' + location.host + '/wod/css/img/ajax-loader.gif', 'style': 'display: none'});
+        g_img_wait = attr(add('img', add('div')), {'src': location.protocol + '//' + location.host + '/wod/css/img/ajax-loader.gif', 'style': 'display: none'});
         button.parentNode.insertBefore(g_img_wait, button.parentNode.firstChild);
     }
 }

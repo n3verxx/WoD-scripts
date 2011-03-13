@@ -45,42 +45,29 @@ function $(selector, parentNode) {
     return result.length === 1 && result[0] !== context ? result[0] : null;
 }
 
-var attr = function(name, value, remove) {
+var attr = function(elem, name, value, remove) {
     if (remove) {
-        this.removeAttribute(name);
+        elem.removeAttribute(name);
     }
     else if (typeof name === 'object') {
         for (var key in name) {
-            this.setAttribute(key, name[key]);
+            elem.setAttribute(key, name[key]);
         };
     }
     else if (value) {
-        this.setAttribute(name, value);
+        elem.setAttribute(name, value);
     }
     else {
-        return this.getAttribute(name);
+        return elem.getAttribute(name);
     }
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
+    return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
 }
 
-var add = function(value) {
+var add = function(value, parentNode) {
     var newElem = typeof value !== 'object' ? document.createElement(value) : value;
     if (newElem.wrappedJSObject) newElem = newElem.wrappedJSObject;
-    if (this.nodeType) this.appendChild(newElem);
+    if (parentNode && parentNode.nodeType) parentNode.appendChild(newElem);
     return newElem;
-}
-
-if (Element.prototype) {
-    if (!Element.prototype.attr) Element.prototype.attr = attr;
-    if (!Element.prototype.add)  Element.prototype.add = add;
-}
-else {
-    var elements = ['Div', 'Input', 'Table', 'TableRow', 'TableCell', 'Label', 'Span'];
-    for (var i = 0, cnt = elements.length; i < cnt; i++) {
-        var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
-        if (!proto.attr) proto.attr = attr;
-        if (!proto.add) proto.add = add;
-    };
 }
 
 var supportsInnerText = typeof Element.prototype !== 'undefined';
@@ -137,18 +124,19 @@ var tidyTrade = function (table) {
     for (var i = 0, cnt = items.length; i < cnt; i++) {
         var item   = items[i],
             size   = '&nbsp;' + item.size,
-            row    = newTable.add('tr'),
-            no     = row.add('td').attr('align', 'right').innerHTML = i + 1,
-            c_cond = row.add('td').attr('valign', 'top').add(item.condition),
-            c_link = row.add('td').attr({'valign': 'top', 'align': 'left'});
+            row    = add('tr', newTable),
+            no     = attr(add('td', row), 'align', 'right').innerHTML = i + 1,
+            c_cond = add(item.condition, attr(add('td', row), 'valign', 'top')),
+            c_link = attr(add('td', row), {'valign': 'top', 'align': 'left'});
 
-        if (item.control) row.add('td').add(item.control);
+        if (item.control) add(item.control, add('td', row));
 
-        c_link.add(item.link);
-        c_link.add('span').innerHTML = size;
+        add(item.link, c_link);
+        add('span', c_link).innerHTML = size;
 
         if (sums[item.name] > 1) {
-            c_link.add('span').attr('style', 'color: #666').innerHTML = '&nbsp;<sup>&sum;=' + sums[item.name] + '</sup>';
+            var summ = add('span', c_link);
+            attr(summ, 'style', 'color: #666').innerHTML = '&nbsp;<sup>&sum;=' + sums[item.name] + '</sup>';
             sums[item.name] = 0;
         }
     }

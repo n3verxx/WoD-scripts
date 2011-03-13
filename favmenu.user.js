@@ -157,105 +157,86 @@ function $(selector, parentNode) {
     return result.length === 1 && result[0] !== context ? result[0] : null;
 }
 
-var attr = function(name, value, remove) {
+var attr = function(elem, name, value, remove) {
     if (remove) {
-        this.removeAttribute(name);
+        elem.removeAttribute(name);
     }
     else if (typeof name === 'object') {
         for (var key in name) {
-            this.setAttribute(key, name[key]);
+            elem.setAttribute(key, name[key]);
         };
     }
     else if (value) {
-        this.setAttribute(name, value);
+        elem.setAttribute(name, value);
     }
     else {
-        return this.getAttribute(name);
+        return elem.getAttribute(name);
     }
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
+    return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
 }
 
-var css = function(name, value) {
-    var estyle = document.defaultView.getComputedStyle(this, null);
-    if (typeof name === 'object') {
-        for (var key in name) {
-            estyle.setProperty(key, name[key]);
-        };
-    }
-    else if (value) {
-        estyle.setProperty(name, value);
-    }
-    else {
-        return estyle.getPropertyValue(name);
-    }
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
-}
-
-var cssClass = function(name, toggle) {
-    var has = this.className.indexOf(name) !== -1;
+var cssClass = function(elem, name, toggle) {
+    var has = elem.className.indexOf(name) !== -1;
     if (typeof toggle !== 'boolean') return has;
-    if (has && toggle) return this.wrappedJSObject ? this.wrappedJSObject : this;
-    this.className = toggle ? this.className + ' ' + name : this.className.replace(name,'').replace(/^\s+|\s+$/g,'');
-    return this.wrappedJSObject ? this.wrappedJSObject : this;
+    if (has && toggle) return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
+    elem.className = toggle ? elem.className + ' ' + name : elem.className.replace(name,'').replace(/^\s+|\s+$/g,'');
+    return elem.wrappedJSObject ? elem.wrappedJSObject : elem;
 }
 
-var add = function(value) {
+var add = function(value, parentNode) {
     var newElem = typeof value !== 'object' ? document.createElement(value) : value;
     if (newElem.wrappedJSObject) newElem = newElem.wrappedJSObject;
-    if (this.nodeType) this.appendChild(newElem);
+    if (parentNode && parentNode.nodeType) parentNode.appendChild(newElem);
     return newElem;
 }
 
-if (Element.prototype) {
-    if (!Element.prototype.attr) Element.prototype.attr = attr;
-    if (!Element.prototype.css)  Element.prototype.css = css;
-    if (!Element.prototype.cssClass) Element.prototype.cssClass = cssClass;
-    if (!Element.prototype.add) Element.prototype.add = add;
-}
-else {
-    var elements = ['Body', 'Anchor', 'Div', 'Image', 'Span'];
-    for (var i = 0, cnt = elements.length; i < cnt; i++) {
-        var proto = unsafeWindow['HTML' + elements[i] + 'Element'].prototype;
-        if (!proto.attr) proto.attr = attr;
-        if (!proto.css) proto.css = css;
-        if (!proto.cssClass) proto.cssClass = cssClass;
-        if (!proto.add) proto.add = add;
-    };
-}
 
 var verticalMenu = $('.menu-vertical .menu-0-body');
 
 if (verticalMenu) {
 
-    var skin = $('body').attr('onload').match(/skin[0-9-]+/i),
+    var e_body = $('body'),
+        skin = attr(e_body, 'onload').match(/skin[0-9-]+/i),
         font_render_url = 'http://fonts.neise-games.de/java_font_renderer/render?skin=' + skin,
-        my_menu = add('div').attr({'class': 'menu-1', id: 'menu_my_menu'}),
-        caption = my_menu.add('a').attr({'class': 'menu-1-caption alink selected', 'onclick': "return menuOnClick(this,'','','');"}),
+        my_menu = add('div'),
+        caption = add('a', my_menu),
         supports_img = skin && skin != 'skin-1';
 
+    attr(my_menu, {'class': 'menu-1', id: 'menu_my_menu'});
+    attr(caption, {'class': 'menu-1-caption alink selected', 'onclick': "return menuOnClick(this,'','','');"})
+
     if (supports_img) {
-        caption.add('img').attr({'class': 'font_menu-1', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1&text=' + MY_MENU_NAME});
-        caption.add('img').attr({'class': 'font_menu-1-hovered', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-hovered&text=' + MY_MENU_NAME});
-        caption.add('img').attr({'class': 'font_menu-1-selected', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-selected&text=' + MY_MENU_NAME});
+        attr(add('img', caption), {'class': 'font_menu-1', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1&text=' + MY_MENU_NAME});
+        attr(add('img', caption), {'class': 'font_menu-1-hovered', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-hovered&text=' + MY_MENU_NAME});
+        attr(add('img', caption), {'class': 'font_menu-1-selected', 'alt': MY_MENU_NAME, 'src' : font_render_url + '&profil=font_menu-1-selected&text=' + MY_MENU_NAME});
     }
     else {
-        caption.innerText = MY_MENU_NAME;
+        if (caption.innerText) {
+           caption.innerText = MY_MENU_NAME;
+        }
+        else {
+           caption.textContent = MY_MENU_NAME;
+        }
     }
 
-   caption.add('span').attr('class', 'menu-1-arrow open');
+   attr(add('span', caption), 'class', 'menu-1-arrow open');
 
-   var menu_body = my_menu.add('div').attr({'class': 'menu-1-body', 'style' : 'display: block'}).add('div').attr('class', 'menu-2'),
+   var menu0 = add('div', my_menu),
+       menu_body = add('div', menu0),
        menu1 = $('.menu-1', verticalMenu),
        links = $('.menu-2 a', verticalMenu),
        menu_items = {},
        open_links = {};
 
+   attr(menu0, {'class': 'menu-1-body', 'style' : 'display: block'});
+   attr(menu_body, 'class', 'menu-2');
+
    for (var i = 0, cnt = menu1.length; i < cnt; i++) {
        var open_menu = menu1[i];
-       if (open_menu.cssClass('open')) {
+       if (cssClass(open_menu, 'open')) {
            var tmp = $('a', open_menu);
            for (var j = 0, c2 = tmp.length; j < c2; j++) {
-               var name = tmp[j].attr('onclick').match(/'([a-z_ ]+)',''\);$/i);
+               var name = attr(tmp[j], 'onclick').match(/'([a-z_ ]+)',''\);$/i);
                if (name) open_links[name[1]] = open_menu;
            }
        }
@@ -265,7 +246,7 @@ if (verticalMenu) {
 
    for (var i = 0, cnt = links.length; i < cnt; i++) {
        var link = links[i],
-           name = link.attr('onclick').match(/'([a-z_ ]+)',''\);$/i);
+           name = attr(link, 'onclick').match(/'([a-z_ ]+)',''\);$/i);
        if (name) {
            menu_items[name[1]] = link.cloneNode(true);
            // keys += "'" + name[1] + "' : '" + link.innerText.replace(/^\s+|\s+$/g,"") + "',\n";
@@ -275,40 +256,65 @@ if (verticalMenu) {
    for(var key in MY_MENU_LAYOUT) {
        var link = menu_items[key],
            submenu = false;
-       if (!link) link = add('a').attr({'href':'#', 'class': 'menu-2-caption'});
-       link.attr('onclick', null, true);
+       if (!link) {
+           link = add('a');
+           attr(link, {'href':'#', 'class': 'menu-2-caption'});
+       }
+       attr(link, 'onclick', null, true);
        var menu_item = MY_MENU_LAYOUT[key];
        if (typeof menu_item === 'string') {
            link.innerHTML = menu_item;
            var open_menu = open_links[key];
            if (open_menu) {
-               var arrow = $('.menu-1-arrow', open_menu.cssClass('open', false));
-               if (arrow) arrow.cssClass('open', false).cssClass('closed', true);
+               var arrow = $('.menu-1-arrow', open_menu);
+               cssClass(open_menu, 'open', false);
+               if (arrow) {
+                   cssClass(arrow, 'open', false);
+                   cssClass(arrow, 'closed', true);
+               }
            }
        }
        else {
-           link.innerText = menu_item[0];
+           if (link.innerText) {
+               link.innerText = menu_item[0];
+           }
+           else {
+               link.textContent = menu_item[0];
+           }
            var submenu_items = menu_item[1];
-           submenu = add('div').attr({'class': 'menu-2-body', 'style': 'padding-top: 0px'});
+           submenu = add('div');
+           attr(submenu, {'class': 'menu-2-body', 'style': 'padding-top: 0px'});
            for (var subkey in submenu_items) {
                var sublink = menu_items[subkey];
                if (sublink) {
-                   sublink.attr('onclick', null, true);
-                   submenu.add('div').attr('class', 'menu-3').add(sublink).cssClass('menu-2-caption', false).cssClass('menu-3-caption', true).innerHTML = submenu_items[subkey];
+                   attr(sublink, 'onclick', null, true);
+                   var menu3 = add('div', submenu),
+                       menu3_cap = add(sublink, menu3);
+                   attr(menu3, 'class', 'menu-3');
+                   cssClass(menu3_cap, 'menu-2-caption', false);
+                   cssClass(menu3_cap, 'menu-3-caption', true);
+                   menu3_cap.innerHTML = submenu_items[subkey];
                    var open_menu = open_links[subkey];
                    if (open_menu) {
-                       var arrow = $('.menu-1-arrow', open_menu.cssClass('open', false));
-                       if (arrow) arrow.cssClass('open', false).cssClass('closed', true);
+                       var arrow = $('.menu-1-arrow', open_menu);
+                       cssClass(open_menu, 'open', false);
+                       if (arrow) {
+                           cssClass(arrow, 'open', false);
+                           cssClass(arrow, 'closed', true);
+                       }
                    }
                }
            };
        }
-       var new_menu = menu_body.add('div').attr('class', 'menu-2 open');
-       new_menu.add(link);
-       if (submenu) new_menu.add(submenu);
+       var new_menu = add('div', menu_body);
+       attr(new_menu, 'class', 'menu-2 open');
+       add(link, new_menu);
+       if (submenu) add(submenu, new_menu);
    }
 
-   verticalMenu.insertBefore(add('div').attr('class', 'menu-between'), verticalMenu.firstChild);
+   var menu_between = add('div');
+   attr(menu_between, 'class', 'menu-between');
+   verticalMenu.insertBefore(menu_between, verticalMenu.firstChild);
    verticalMenu.insertBefore(my_menu, verticalMenu.firstChild);
 }
 
