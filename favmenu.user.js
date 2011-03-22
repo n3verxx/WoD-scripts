@@ -121,14 +121,18 @@ var MY_MENU_LAYOUT = {
 
 */
 
-function $(selector, parentNode) {
+function $(selector, parentNode, alwaysArray) {
     var context = parentNode || document;
     if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
-    var selectors = selector.split(' '),
-        result = [context];
+    var selectors = selector.split(/\s+/), result = [context], asArray = alwaysArray || false;
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
-        var sel = selectors[i],
-            new_result = [];
+        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z0-9-_]+\w*)/i), sel = m_elem ? m_elem[1] : '',
+            s = s.replace(sel, ''), re_attr = /(\[([a-z]+)([\*\^\$]?=)"(\w+)"\])/gi, filters = [];
+        while (filter = re_attr.exec(s)) {
+            if (filter.index === re_attr.lastIndex) re_attr.lastIndex++;
+            var f = { 'attribute': filter[2], 'condition': filter[3], 'value': filter[4] };
+            filters.push(f);
+        }
         switch(sel[0]) {
             case '#':
                 new_result = [document.getElementById(sel.substring(1))];
@@ -147,14 +151,32 @@ function $(selector, parentNode) {
                 };
                 break;
         }
-        if (new_result.length === 0) return null;
-        result = new_result;
+        if (filters.length > 0) {
+            result = [];
+            for (var g = 0, cntg = new_result.length; g < cntg; g++) {
+                var elem = new_result[g], ok = false;
+                for (var l = 0, cntl = filters.length; l < cntl; l++) {
+                    var f = filters[l], attrib = elem.getAttribute(f.attribute);
+                    if (attrib) {
+                        switch(f.condition) {
+                            case '*=': ok = attrib.indexOf(f.value) > -1;  break;
+                            case '^=': ok = attrib.indexOf(f.value) === 0; break;
+                            case '$=': ok = attrib.indexOf(f.value, attrib.length - f.value.length) > -1; break;
+                            default  : ok = attrib === f.value; break;
+                        }
+                    }
+                    if (!ok) break;
+                }
+                if (ok) result.push(elem);
+            }
+        }
+        else {
+            result = new_result;
+        }
     }
-    for (var i = 0, cnt = result.length; i < cnt; i++) {
-        if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject;
-    };
-    if (result.length > 1) return result;
-    return result.length === 1 && result[0] !== context ? result[0] : null;
+    if (result.length === 0 || result[0] === context) return null;
+    for (var i = 0, cnt = result.length; i < cnt; i++) { if (result[i].wrappedJSObject) result[i] = result[i].wrappedJSObject; };
+    return !asArray && result.length === 1 ? result[0] : result;
 }
 
 var attr = function(elem, name, value, remove) {
@@ -190,13 +212,11 @@ var add = function(value, parentNode) {
     return newElem;
 }
 
-
 var verticalMenu = $('.menu-vertical .menu-0-body');
 
 if (verticalMenu) {
 
-    var e_body = $('body'),
-        skin = attr(e_body, 'onload').match(/skin[0-9-]+/i),
+    var skin = $('link[href*="skin"]').href.match(/skin[0-9-]+/i),
         font_render_url = 'http://fonts.neise-games.de/java_font_renderer/render?skin=' + skin,
         my_menu = add('div'),
         caption = add('a', my_menu),

@@ -14,7 +14,7 @@ function $(selector, parentNode, alwaysArray) {
     if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
     var selectors = selector.split(/\s+/), result = [context], asArray = alwaysArray || false;
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
-        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z]+\w*)/i), sel = m_elem ? m_elem[1] : '',
+        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z0-9-_]+\w*)/i), sel = m_elem ? m_elem[1] : '',
             s = s.replace(sel, ''), re_attr = /(\[([a-z]+)([\*\^\$]?=)"(\w+)"\])/gi, filters = [];
         while (filter = re_attr.exec(s)) {
             if (filter.index === re_attr.lastIndex) re_attr.lastIndex++;
@@ -55,7 +55,7 @@ function $(selector, parentNode, alwaysArray) {
                     }
                     if (!ok) break;
                 }
-                if (ok) result.push(elem);
+                if (ok !== false) result.push(elem);
             }
         }
         else {
@@ -135,14 +135,15 @@ var g_main = $('#main_content'),
 
 if (buttons_commit.length > 0) {
     var scope = null;
-    if (!scope) scope = $('input[type="submit"][name^="ITEMS_LAGER_DO_SORT"]', g_main);
-    if (!scope) scope = $('input[type="submit"][name^="ITEMS_KELLER_DO_SORT"]', g_main);
-    if (!scope) scope = $('input[type="submit"][name^="ITEMS_GROUPCELLAR_DO_SORT"]', g_main);
+    if (!scope) scope = $('input[type="submit"][name^="ITEMS_LAGER_DO_SORT"][class*="table_h"]', g_main);
+    if (!scope) scope = $('input[type="submit"][name^="ITEMS_KELLER_DO_SORT"][class*="table_h"]', g_main);
+    if (!scope) scope = $('input[type="submit"][name^="ITEMS_GROUPCELLAR_DO_SORT"][class*="table_h"]', g_main);
+
     try { scope = scope[0].parentNode.parentNode.parentNode.parentNode; } catch (ex) { scope = null; }
     if (!scope) return;
 
-    var rows = $('.content_table_row_0', scope, true),
-        rows = rows ? rows.concat($('.content_table_row_1', scope, true)) : null;
+    var rows = $('tbody .content_table_row_0', scope, true),
+        rows = rows ? rows.concat($('tbody .content_table_row_1', scope, true)) : null;
     if (!rows) return;
 
     var objects = [],
