@@ -345,7 +345,6 @@ Hero.prototype.parse = function(html) {
             g_jobs++;
             var eq_url = location.href.replace('skills.php', 'items.php').replace('menukey=hero_skills', 'menukey=hero_gear');
             if (eq_url.indexOf('view=gear') < 0) eq_url += '&view=gear';
-            GM_log(eq_url);
 
             get(eq_url, function(gearHtml) {
                 var gear_html = add('div'),
