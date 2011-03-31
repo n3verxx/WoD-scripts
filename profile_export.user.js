@@ -8,7 +8,7 @@
 
 (function() {
 
-var VERSION = '1.0.4';
+var VERSION = '1.0.5';
 
 /***
  * TODO:
@@ -195,7 +195,7 @@ var _attrCosts = '0,0,100,500,1300,2800,5100,8500,13200,19400,27400,37400,49700,
 185900,221600,261800,306800,356800,412200,473300,540400,613800,693800,780800,875000,976800'.split(',');
 
 HeroAttribute.getCost = function(value) {
-    return _attrCosts[value] ? Number(_attrCosts[value]) : 0;
+    return _attrCosts[value] ? ('' + Number(_attrCosts[value])).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1 ") : 0;
 }
 
 function Hero() {
@@ -228,6 +228,8 @@ function Hero() {
         'act': new HeroAttribute('Actions'),
     };
     this.armor = {};
+    this.gear = {};
+    this.modifiers = {};
 }
 
 Hero.prototype.generateBBCode = function() {
@@ -259,6 +261,7 @@ Hero.getProfileTemplate = function() {
 [/table]\
 [/td]\
 [/tr][/table]\
+[table][tr][td valign=top]\
 [h1]Armor[/h1]\
 [table border=1]\
 [tr][th][size=12]Damage type[/size][/th][th][size=12]Attack type[/size][/th][th][size=12]Armor (r)[/size][/th][/tr]\
@@ -269,15 +272,7 @@ Hero.getProfileTemplate = function() {
  / <#if(val[2]>0){#>[color=mediumseagreen]<#}#><#=val[2]#><#if(val[2]>0){#>[/color]<#}#>[/size][/td]\
 [/tr]<#}}#>\
 [/table]  [size=10]r - for normal / good / critical hits[/size]\
-[h1]Initiative[/h1]\
-[table border=1]\
-[tr][th]Skill[/th][th]Attributes[/th][th]Initiative[/th][/tr]\
-[tr][td]Standard (no skill)[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value+hattr.ini.effective_value#>[/td][/tr]\
-<# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
-if (skill.type === "initiative"){ var m = skill.initiative_attr.match(/[a-z]{2}/gi), attr1 = hattr[m[0]], attr2 = hattr[m[1]];#>\
-[tr][td][skill:"<#=skill.name#>" <#if(skill.color)#>color=<#=skill.color#><#;#> size=12][/td][td align=center]<#=skill.initiative_attr#>[/td][td align=center]<#=attr1.effective_value*2+attr2.effective_value+skill.effective_rank*2+hattr.ini.effective_value#>[/td][/tr]\
-<#}}#>\
-[/table]\
+[/td][td][/td][td][/td][td valign=top]\
 [h1]Standard Parries[/h1]\
 [table border=1]\
 [tr][th]Attack type[/th][th]Attributes[/th][th]Defence[/th][/tr]\
@@ -291,9 +286,18 @@ if (skill.type === "initiative"){ var m = skill.initiative_attr.match(/[a-z]{2}/
 [tr][td]Explosion or Blast[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value#>[/td][/tr]\
 [tr][td]Disease[/td][td align=center]co,ch[/td][td align=center]<#=hattr.co.effective_value*2+hattr.ch.effective_value#>[/td][/tr]\
 [tr][td]Curse[/td][td align=center]ch,wi[/td][td align=center]<#=hattr.ch.effective_value*2+hattr.wi.effective_value#>[/td][/tr]\
+[/table]  [size=10]used when no skill available or set[/size][/td][/tr][/table]\
+[h1]Initiative[/h1]\
+[table border=1]\
+[tr][th]Skill[/th][th]Attributes[/th][th]Initiative[/th][/tr]\
+[tr][td]Standard (no skill)[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value+hattr.ini.effective_value#>[/td][/tr]\
+<# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
+if (skill.type === "initiative"){ var m = skill.initiative_attr.match(/[a-z]{2}/gi), attr1 = hattr[m[0]], attr2 = hattr[m[1]];#>\
+[tr][td][skill:"<#=skill.name#>" <#if(skill.color)#>color=<#=skill.color#><#;#> size=12][/td][td align=center]<#=skill.initiative_attr#>[/td][td align=center]<#=attr1.effective_value*2+attr2.effective_value+skill.effective_rank*2+hattr.ini.effective_value#>[/td][/tr]\
+<#}}#>\
 [/table]\
 [h1]Skills[/h1]\
-[table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th]Attack[/th][th]Defence[/th][th]Effect[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
+[table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
 var erank = skill.effective_rank !== skill.rank ? ("[" + skill.effective_rank + "]") : "";\
 var pos_mark = skill.max_affected && skill.one_pos ? "&sup1;" : "";\
@@ -303,12 +307,24 @@ var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type
 [td align=center][size=12]<#=skill.rank#> [url=" "]<#=erank#>[/url][/size][/td]\
 [td align=center][size=12][color=dodgerblue]<#=mp#>[/color][/size][/td]\
 [td align=center][size=12][color=<#=color_affect#>]<#=skill.max_affected#><#=pos_mark#>[/color][/size][/td]\
-[td align=center][size=12]<#=r.attack#>[/size][/td]\
-[td align=center][size=12]<#=r.defence#>[/size][/td]\
-[td align=center][size=12][color=<#=color_affect#>]<#=r.effect#>[/color][/size][/td]\
 [td align=right]<#=skill.training_cost_gold#>[/td]\
 [td align=right]<#=skill.training_cost_ep#>[/td][/tr]<# } #>\
 [/table]  [size=10]1 - in one position[/size]\
+<# if (hero.gear) { #>\
+[h1]Equipment[/h1]\
+[table]\
+[tr][td valign=top]\
+[table border=1][tr][th align=left]Slot[/th][th]Item[/th][/tr]\
+<# var gear = hero.gear; for (var key in gear) { var slot = key[0].toUpperCase() + key.substring(1), item = gear[key]; if (key.indexOf("pocket") != 0) { #>\
+[tr][td]<#=slot#>[/td][td]<#if(item.length > 0) #>[item:<#=item#>]<#;#>[/td][/tr]\
+<# }} #>\
+[/table][/td][td valign=top]\
+[table border=1][tr][th align=left]Pocket items[/th][/tr]\
+<# var gear = hero.gear; for (var key in gear) { var slot = key, item = gear[key]; if (key.indexOf("pocket") == 0 && item.length > 0) { #>\
+[tr][td][item:<#=item#>][/td][/tr]\
+<# }} #>\
+[/table][/td][/tr][/table]\
+<# } #>\
 \
 ';
     return template;
@@ -317,13 +333,38 @@ var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type
 Hero.prototype.parse = function(html) {
     try {
         var title = $('h1', html),
-            content_rows = $('.content_table_row_0', html).concat($('.content_table_row_1', html));
+            content_rows = $('.content_table_row_0', html).concat($('.content_table_row_1', html)),
+            re_attr  = /Strength|Constitution|Intelligence|Dexterity|Charisma|Agility|Perception|Willpower/,
+            re_race  = /(Borderlander|Dinturan|Gnome|Halfling|Hill Dwarf|Kerasi|Mag-Mor Elf|Mountain Dwarf|Rashani|Tiram-Ag Elf|Woodlander) \(/,
+            re_class = /(Alchemist|Archer|Barbarian|Bard|Drifter|Gladiator|Hunter|Juggler|Knight|Mage|Paladin|Priest|Scholar|Shaman) \(/;
 
         this.name = innerText(title).replace('- Attributes and Characteristics', '').trim();
 
-        var re_attr  = /Strength|Constitution|Intelligence|Dexterity|Charisma|Agility|Perception|Willpower/,
-            re_race  = /(Borderlander|Dinturan|Gnome|Halfling|Hill Dwarf|Kerasi|Mag-Mor Elf|Mountain Dwarf|Rashani|Tiram-Ag Elf|Woodlander) \(/,
-            re_class = /(Alchemist|Archer|Barbarian|Bard|Drifter|Gladiator|Hunter|Juggler|Knight|Mage|Paladin|Priest|Scholar|Shaman) \(/;
+        if (g_check_gear.checked) {
+            get(location.href.replace('skills.php?menukey=hero_skills', 'items.php?menukey=hero_gear&view=gear'), function(gearHtml) {
+                var gear_html = add('div'),
+                    gear = {};
+
+                gear_html.innerHTML = gearHtml;
+                var items = $('div[id="main_content"] form td[class="texttoken"]', gear_html, true),
+                    re_uses  = /\(([0-9]+)\/[0-9]+\)/;
+
+                for (var i = 0, cnt = items.length; i < cnt; i++) {
+                    var slot = items[i],
+                        slot_name = slot.innerHTML,
+                        row = slot.parentNode,
+                        ctrl = $('select', row),
+                        itm = ctrl ? ctrl.options[ctrl.selectedIndex].text.replace(/!$/,'') : '';
+
+                    gear[slot.innerHTML] = !re_uses.test(itm) ? itm : '';
+                }
+
+                this.gear = gear;
+
+            }, this);
+        } else {
+            delete this.gear;
+        }
 
         for (var i = 0, cnt = content_rows.length; i < cnt; i++) {
             var row = content_rows[i];
@@ -606,8 +647,8 @@ HeroSkill.prototype.calculateCost = function() {
         cost = _talCosts[this.rank] ? Number(_talCosts[this.rank]) : 0;
     }
 
-    this.training_cost_ep = cost;
-    this.training_cost_gold = cost * 0.9;
+    this.training_cost_ep = ('' + cost).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1 ");
+    this.training_cost_gold = ('' + cost * 0.9).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1 ");
     return this;
 }
 
@@ -615,6 +656,7 @@ HeroSkill.prototype.calculateCost = function() {
 
 var g_form_skills = $('#main_content form'),
     g_button_export,
+    g_check_gear,
     g_img_wait,
     g_hero,
     g_jobs;
@@ -658,6 +700,7 @@ var exportSkills = function() {
 var showResult = function(skill) {
     if (skill) g_jobs--;
     if (g_jobs === 0) {
+
         var h1 = $('h1', g_form_skills),
             txt_export = $('#profile-export-result', h1),
             date = new Date(),
@@ -678,10 +721,17 @@ if (g_form_skills && g_form_skills.action && g_form_skills.action.match(/hero\/s
 
     if (button.value === 'Show Details') {
         g_button_export = add('input');
+        g_check_gear = add('input');
+        label_gear = add('label');
+        label_gear.innerHTML = 'Equipment';
         attr(g_button_export, {'type': 'button', 'class': 'button clickable', 'value': 'Export', 'style': 'margin-left: 4px'});
+        attr(g_check_gear, {'type': 'checkbox', 'id': 'export-gear', 'style': 'margin-left: 4px'});
+        attr(label_gear, {'for': 'export-gear'});
         g_button_export.addEventListener('click', exportSkills, false);
-        button.parentNode.insertBefore(g_button_export, button.nextSibling);
-        button.parentNode.insertBefore(add('br'), g_button_export.nextSibling);
+        button.parentNode.insertBefore(label_gear, button.nextSibling);
+        button.parentNode.insertBefore(g_check_gear, label_gear);
+        button.parentNode.insertBefore(g_button_export, g_check_gear);
+        button.parentNode.insertBefore(add('br'), label_gear.nextSibling);
 
         g_img_wait = attr(add('img', add('div')), {'src': location.protocol + '//' + location.host + '/wod/css/img/ajax-loader.gif', 'style': 'display: none'});
         button.parentNode.insertBefore(g_img_wait, button.parentNode.firstChild);
