@@ -272,6 +272,15 @@ Hero.getProfileTemplate = function() {
  / <#if(val[2]>0){#>[color=mediumseagreen]<#}#><#=val[2]#><#if(val[2]>0){#>[/color]<#}#>[/size][/td]\
 [/tr]<#}}#>\
 [/table]  [size=10]r - for normal / good / critical hits[/size]\
+[h1]Initiative[/h1]\
+[table border=1]\
+[tr][th]Skill[/th][th]Attributes[/th][th]Initiative[/th][/tr]\
+[tr][td]Standard (no skill)[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value+hattr.ini.effective_value#>[/td][/tr]\
+<# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
+if (skill.type === "initiative"){ var m = skill.initiative_attr.match(/[a-z]{2}/gi), attr1 = hattr[m[0]], attr2 = hattr[m[1]];#>\
+[tr][td][skill:"<#=skill.name#>" <#if(skill.color)#>color=<#=skill.color#><#;#> size=12][/td][td align=center]<#=skill.initiative_attr#>[/td][td align=center]<#=attr1.effective_value*2+attr2.effective_value+skill.effective_rank*2+hattr.ini.effective_value#>[/td][/tr]\
+<#}}#>\
+[/table]\
 [/td][td][/td][td][/td][td valign=top]\
 [h1]Standard Parries[/h1]\
 [table border=1]\
@@ -286,16 +295,7 @@ Hero.getProfileTemplate = function() {
 [tr][td]Explosion or Blast[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value#>[/td][/tr]\
 [tr][td]Disease[/td][td align=center]co,ch[/td][td align=center]<#=hattr.co.effective_value*2+hattr.ch.effective_value#>[/td][/tr]\
 [tr][td]Curse[/td][td align=center]ch,wi[/td][td align=center]<#=hattr.ch.effective_value*2+hattr.wi.effective_value#>[/td][/tr]\
-[/table]  [size=10]used when no skill available or set[/size][/td][/tr][/table]\
-[h1]Initiative[/h1]\
-[table border=1]\
-[tr][th]Skill[/th][th]Attributes[/th][th]Initiative[/th][/tr]\
-[tr][td]Standard (no skill)[/td][td align=center]ag,pe[/td][td align=center]<#=hattr.ag.effective_value*2+hattr.pe.effective_value+hattr.ini.effective_value#>[/td][/tr]\
-<# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
-if (skill.type === "initiative"){ var m = skill.initiative_attr.match(/[a-z]{2}/gi), attr1 = hattr[m[0]], attr2 = hattr[m[1]];#>\
-[tr][td][skill:"<#=skill.name#>" <#if(skill.color)#>color=<#=skill.color#><#;#> size=12][/td][td align=center]<#=skill.initiative_attr#>[/td][td align=center]<#=attr1.effective_value*2+attr2.effective_value+skill.effective_rank*2+hattr.ini.effective_value#>[/td][/tr]\
-<#}}#>\
-[/table]\
+[/table]  [size=10]used when no skill is available or set[/size][/td][/tr][/table]\
 [h1]Skills[/h1]\
 [table border=1][tr][th align=left]Name[/th][th]Level[/th][th]MP Cost[/th][th]Targets[/th][th colspan=2]Spent :gold: / :ep:[/th][/tr]\
 <# var skills = hero.skills; for (var i = 0, cnt = skills.length; i < cnt; i++) { var skill = skills[i], color_skill;\
@@ -341,25 +341,35 @@ Hero.prototype.parse = function(html) {
         this.name = innerText(title).replace('- Attributes and Characteristics', '').trim();
 
         if (g_check_gear.checked) {
-            get(location.href.replace('skills.php?menukey=hero_skills', 'items.php?menukey=hero_gear&view=gear'), function(gearHtml) {
+
+            g_jobs++;
+            var eq_url = location.href.replace('skills.php', 'items.php').replace('menukey=hero_skills', 'menukey=hero_gear');
+            if (eq_url.indexOf('view=gear') < 0) eq_url += '&view=gear';
+            GM_log(eq_url);
+
+            get(eq_url, function(gearHtml) {
                 var gear_html = add('div'),
                     gear = {};
 
                 gear_html.innerHTML = gearHtml;
+
                 var items = $('div[id="main_content"] form td[class="texttoken"]', gear_html, true),
                     re_uses  = /\(([0-9]+)\/[0-9]+\)/;
 
-                for (var i = 0, cnt = items.length; i < cnt; i++) {
-                    var slot = items[i],
-                        slot_name = slot.innerHTML,
-                        row = slot.parentNode,
-                        ctrl = $('select', row),
-                        itm = ctrl ? ctrl.options[ctrl.selectedIndex].text.replace(/!$/,'') : '';
+                if (items) {
+                    for (var i = 0, cnt = items.length; i < cnt; i++) {
+                        var slot = items[i],
+                            slot_name = slot.innerHTML,
+                            row = slot.parentNode,
+                            ctrl = $('select', row),
+                            itm = ctrl ? ctrl.options[ctrl.selectedIndex].text.replace(/!$/,'') : '';
 
-                    gear[slot.innerHTML] = !re_uses.test(itm) ? itm : '';
+                        gear[slot.innerHTML] = !re_uses.test(itm) ? itm : '';
+                    }
+                    this.gear = gear;
                 }
 
-                this.gear = gear;
+                g_jobs--;
 
             }, this);
         } else {
@@ -739,6 +749,10 @@ if (g_form_skills && g_form_skills.action && g_form_skills.action.match(/hero\/s
 }
 
 })();
+
+
+
+
 
 
 
