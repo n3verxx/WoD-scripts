@@ -2,7 +2,7 @@
 // @name           Storage Management
 // @namespace      Never
 // @description    Adds additional functionality for groups storage and treasure vault management
-// @include        http*://*.world-of-dungeons.net/wod/spiel/hero/items.php*
+// @include        http*://*.world-of-dungeons.*/wod/spiel/hero/items.php*
 // ==/UserScript==
 
 (function() {
@@ -21,6 +21,7 @@ function $(selector, parentNode, alwaysArray) {
             var f = { 'attribute': filter[2], 'condition': filter[3], 'value': filter[4] };
             filters.push(f);
         }
+
         switch(sel[0]) {
             case '#':
                 new_result = [document.getElementById(sel.substring(1))];
@@ -39,6 +40,7 @@ function $(selector, parentNode, alwaysArray) {
                 };
                 break;
         }
+
         if (filters.length > 0) {
             result = [];
             for (var g = 0, cntg = new_result.length; g < cntg; g++) {
@@ -98,6 +100,20 @@ var innerText = function(elem) {
     return supportsInnerText ? elem.innerText : elem.textContent;
 }
 
+// --- Translations ---
+
+if (location.href.indexOf('.net') > 0) {
+    var _t = function(text) { return text; };
+}
+else {
+    var _t = function(text) {
+        switch(text) {
+            case 'Commit': return 'nderungen';
+            default: return text;
+        };
+     }
+}
+
 // --- Classes ---
 
 function StorageObject() {
@@ -131,7 +147,7 @@ StorageObject.prototype.isConsumable = function() {
 // --- Main ---
 
 var g_main = $('#main_content'),
-    buttons_commit = $('input[type="submit"][name="ok"][value^="Commit"]', g_main) || [];
+    buttons_commit = $('input[type="submit"][name="ok"][value*="' + _t('Commit') + '"]', g_main) || [];
 
 if (buttons_commit.length > 0) {
     var scope = null;
