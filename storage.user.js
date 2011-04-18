@@ -158,8 +158,8 @@ if (buttons_commit.length > 0) {
     try { scope = scope[0].parentNode.parentNode.parentNode.parentNode; } catch (ex) { scope = null; }
     if (!scope) return;
 
-    var rows = $('tbody .content_table_row_0', scope, true),
-        rows = rows ? rows.concat($('tbody .content_table_row_1', scope, true)) : null;
+    var rows = $('tbody tr[class="row0"]', scope, true),
+        rows = rows ? rows.concat($('tbody tr[class="row1"]', scope, true)) : null;
     if (!rows) return;
 
     var objects = [],

@@ -8,7 +8,7 @@
 
 (function() {
 
-var VERSION = '1.0.5';
+var VERSION = '1.0.6';
 
 /***
  * TODO:
@@ -18,10 +18,6 @@ var VERSION = '1.0.5';
  *   - parse subclass
  *   - parse talents
  *
- *   bonuses:
- *   -attack / -defence / -effect
- *   -for skill / no skill
- *   bonuses[no-skill]  *
  */
 
 // --- Helpers ---
@@ -31,7 +27,7 @@ function $(selector, parentNode, alwaysArray) {
     if (!selector || typeof selector !== 'string' || !(context.nodeType === 9 || context.nodeType === 1)) return null;
     var selectors = selector.split(/\s+/), result = [context], asArray = alwaysArray || false;
     for (var i = 0, cnt = selectors.length; i < cnt; i++) {
-        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z]+\w*)/i), sel = m_elem ? m_elem[1] : '',
+        var new_result = [], s = selectors[i], m_elem = s.match(/^([\.#]?[a-z0-9-_]+\w*)/i), sel = m_elem ? m_elem[1] : '',
             s = s.replace(sel, ''), re_attr = /(\[([a-z]+)([\*\^\$]?=)"(\w+)"\])/gi, filters = [];
         while (filter = re_attr.exec(s)) {
             if (filter.index === re_attr.lastIndex) re_attr.lastIndex++;
@@ -72,7 +68,7 @@ function $(selector, parentNode, alwaysArray) {
                     }
                     if (!ok) break;
                 }
-                if (ok) result.push(elem);
+                if (ok !== false) result.push(elem);
             }
         }
         else {
@@ -333,7 +329,7 @@ var mp = skill.mp_cost != 0 ? skill.mp_cost : ""; var color_affect = (skill.type
 Hero.prototype.parse = function(html) {
     try {
         var title = $('h1', html),
-            content_rows = $('.content_table_row_0', html).concat($('.content_table_row_1', html)),
+            content_rows = $('.row0', html).concat($('.row1', html)),
             re_attr  = /Strength|Constitution|Intelligence|Dexterity|Charisma|Agility|Perception|Willpower/,
             re_race  = /(Borderlander|Dinturan|Gnome|Halfling|Hill Dwarf|Kerasi|Mag-Mor Elf|Mountain Dwarf|Rashani|Tiram-Ag Elf|Woodlander) \(/,
             re_class = /(Alchemist|Archer|Barbarian|Bard|Drifter|Gladiator|Hunter|Juggler|Knight|Mage|Paladin|Priest|Scholar|Shaman) \(/;
@@ -678,7 +674,7 @@ var exportSkills = function() {
     attr(g_img_wait, 'style', null, true);
 
     get(location.href.replace('skills.php', 'attributes.php'), function(attrHtml) {
-        var skill_rows = $('.content_table_row_0', g_form_skills).concat($('.content_table_row_1', g_form_skills)),
+        var skill_rows = $('.row0', g_form_skills, true).concat($('.row1', g_form_skills)),
             attr_html = add('div');
 
         attr_html.innerHTML = attrHtml;
