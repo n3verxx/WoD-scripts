@@ -37,6 +37,7 @@ var MY_MENU_LAYOUT = {
         'Trade', {
             'trade_market'          : 'Marketplace',
             'trade_auction'         : 'Auctions',
+            'trade_bids'            : 'Offers',
         }
     ],
     'recruite_ranking': [
@@ -95,6 +96,7 @@ var MY_MENU_LAYOUT = {
 'trade_chat'                : 'Trade Chat',
 'trade_exchange'            : 'Trade',
 'trade_auction'             : 'Auctions',
+'trade_bids'                : 'Offers',
 'bazar'                     : 'Shops',
 'trade_beg'                 : 'Beggars and Charity',
 'trade_ranking'             : 'Merchant Ranks',

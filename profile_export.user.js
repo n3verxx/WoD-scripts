@@ -8,7 +8,7 @@
 
 (function() {
 
-var VERSION = '1.0.6';
+var VERSION = '1.0.7';
 
 /***
  * TODO:
@@ -17,7 +17,6 @@ var VERSION = '1.0.6';
  *   - parse equipment
  *   - parse subclass
  *   - parse talents
- *
  */
 
 // --- Helpers ---
@@ -138,6 +137,7 @@ var get = function(url, callback, obj, async) {
 
 var supportsInnerText = typeof Element.prototype !== 'undefined',
     innerText = function(elem) {
+    if (!elem) return '';
     return supportsInnerText ? elem.innerText : elem.textContent;
 }
 
@@ -151,7 +151,7 @@ var parseTemplate = function(tpl, data) {
         return fn(data);
     }
     catch (ex) {
-        GM_log(ex);
+        GM_log('parseTemplate: ' + ex);
     }
     return 'ERROR';
 }
@@ -463,7 +463,7 @@ Hero.prototype.parse = function(html) {
         };
     }
     catch (ex) {
-        GM_log(ex);
+        GM_log('Hero.parse: ' + ex);
     }
     return this;
 }
@@ -584,7 +584,7 @@ HeroSkill.prototype.fetchInfo = function(data) {
         }
     }
     catch (ex) {
-        GM_log(ex);
+        GM_log('HeroSkill.fetchInfo: ' + ex);
     }
 
     if (typeof this.onDone === 'function') this.onDone(this);
@@ -618,7 +618,7 @@ HeroSkill.prototype.parse = function(row_html) {
         }
     }
     catch (error) {
-        GM_log(error);
+        GM_log('HeroSkill.parse: ' + error);
     }
 
     return this;
